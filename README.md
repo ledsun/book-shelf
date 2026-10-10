@@ -23,7 +23,9 @@ BROWSER_PATH=/usr/bin/google-chrome npm run test:browser
 
 GitHubリポジトリの Settings → Pages → Build and deployment → Source を **GitHub Actions** に設定してください。mainへのpushでテスト後に公式Pages Actionsが `app/` のみを公開します。初回はActionsの実行許可も確認してください。公開URLは通常 `https://<user>.github.io/<repository-name>/` です。相対URLで任意のプロジェクトサブパスに対応します。実データ、テスト、開発依存はデプロイしません。
 
-静的ファイルを更新するときは `app/sw.js` のCACHEバージョン（`v1`）を変更してください。更新したService Workerは既存タブを閉じて再度開くと適用されます。IndexedDBは更新時に削除しません。
+自動実行の対象は `app/`、`tests/`、`package.json`、`package-lock.json`、Pagesワークフローの変更です。READMEだけの変更ではテスト・デプロイを起動しません。必要な場合はActions画面から手動実行できます。
+
+静的ファイルを更新するときは `app/sw.js` のCACHEバージョンを変更してください。更新したService Workerは既存タブを閉じて再度開くと適用されます。IndexedDBは更新時に削除しません。
 
 ## Android Chromeでの使い方
 
