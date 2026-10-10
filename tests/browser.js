@@ -78,6 +78,19 @@ try{
  assert.match(await page.locator('#detail-title').textContent(),/12/);
  assert.equal(imageRequests,beforeOffline);
  await page.locator('#close-detail').click();
+ // Desktop clicks inside the dialog (including padding) keep it open; backdrop clicks close it.
+ await page.setViewportSize({width:1280,height:900});
+ await page.locator('#results button').first().click();
+ await page.locator('#detail-title').click();
+ assert.equal(await page.locator('#detail').evaluate(dialog=>dialog.open),true);
+ const detailBounds = await page.locator('#detail').boundingBox();
+ await page.mouse.click(detailBounds.x+5,detailBounds.y+5);
+ assert.equal(await page.locator('#detail').evaluate(dialog=>dialog.open),true);
+ await page.mouse.click(10,10);
+ await page.waitForFunction(()=>!document.querySelector('#detail').open);
+ await page.waitForFunction(()=>document.querySelector('#cover-image').getAttribute('src')===null);
+ await page.locator('#results button').first().click();
+ await page.locator('#close-detail').click();
  // Saved pre-feature records remain individual until the next import.
  await page.evaluate(async()=>{
    const {openDatabase,replaceLibrary}=await import('./storage.js');const db=await openDatabase();

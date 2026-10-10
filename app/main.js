@@ -69,6 +69,13 @@ $('settings').onclick = () => { summary(); $('management').showModal(); };
 $('close-management').onclick = () => { if (!busy) $('management').close(); };
 $('management').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
 $('close-detail').onclick = () => $('detail').close();
+$('detail').addEventListener('click', event => {
+  if (event.target !== $('detail')) return;
+  const bounds = $('detail').getBoundingClientRect();
+  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) {
+    $('detail').close();
+  }
+});
 $('more').onclick = renderMore;
 $('search').oninput = () => { clearTimeout(timer); timer = setTimeout(search, 120); };
 $('file').onchange = async () => {
