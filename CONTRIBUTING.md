@@ -52,7 +52,13 @@ BROWSER_PATH=/usr/bin/google-chrome node scripts/screenshots.js
 
 GitHubリポジトリの Settings → Pages → Build and deployment → Source を **GitHub Actions** に設定してください。
 
-mainへのpushでテスト後に公式Pages Actionsが `app/` を公開します。公開URLは通常 `https://<user>.github.io/<repository-name>/` です。
+テストとデプロイは別のワークフローで実行します。
+
+- テスト（`test.yml`）: mainへのpushとPRで、`app/`・`tests/`・`package.json`・`package-lock.json`・テストワークフローの変更時に起動します。
+- デプロイ（`pages.yml`）: mainへのpushで、`app/` またはデプロイワークフローの変更時に、公式Pages Actionsが `app/` を公開します。
+- どちらもActions画面から手動実行できます。デプロイはmainブランチに限定します。
+
+アプリ変更時は両方が独立して起動し、デプロイはテスト完了を待ちません。README・動画・撮影スクリプトだけの変更では、どちらも起動しません。公開URLは通常 `https://<user>.github.io/<repository-name>/` です。
 
 静的ファイルを更新するときは `app/sw.js` のCACHEバージョンを変更してください。
 更新したService Workerは既存タブを閉じて再度開くと適用されます。
