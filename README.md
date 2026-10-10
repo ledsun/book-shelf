@@ -34,6 +34,20 @@ GitHubリポジトリの Settings → Pages → Build and deployment → Source 
 
 初回アクセスでアプリの静的ファイルをキャッシュします。準備完了後はオフライン起動・検索・インポートができます。Amazonリンクを開くには通信が必要です。
 
+## 入力データの作成
+
+[Kindle蔵書エクスポートツール（ExportKindle.js）](https://gist.github.com/ledsun/21f83c4e48cf6fe51e4b6848e8671656) で、BookShelfに取り込む `books.json` を作成できます。
+
+1. PCのChromeで [Kindle Cloud Reader](https://read.amazon.co.jp/) を開き、Amazonにログインします。
+2. Chromeの開発者ツールを開き、Consoleタブを選択します。
+3. Gistの `ExportKindle.js` の内容を確認し、Consoleで実行します。
+4. 取得が完了すると `books.json` がダウンロードされます。
+5. ファイルをAndroid端末へ移し、BookShelfの「データ管理」からインポートします。
+
+ツールはKindle Cloud Reader上で蔵書一覧をページごとに取得し、ASINで重複を除いた配列を出力します。書影用の `productUrl` と漫画判定用の `mangaOrComicAsin` も含まれます。蔵書を更新するときはツールを再実行し、新しいJSONを全件置換でインポートしてください。
+
+このツールはAmazonの内部APIを利用するため、Amazon側の変更で動作しなくなる可能性があります。BookShelf本体はAmazonへのログインや直接同期を行いません。作成したJSONには個人の蔵書情報が含まれるため、公開リポジトリやGistにはアップロードしないでください。
+
 ## 入力JSON
 
 リポジトリに置かれていた非公開の入力ファイルでは、トップレベル配列と `asin`（文字列）、`title`（文字列）、`authors`（文字列配列）、`productUrl`（Amazon画像URL）を確認しました。これは観測した形式であり、Amazonの正式なAPI仕様ではありません。
