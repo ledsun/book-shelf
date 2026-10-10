@@ -36,6 +36,21 @@ test('単独・通常書籍・既存データは単独項目を維持する', ()
   assert.equal(libraryItems([...books, ...regular]).length, 2);
   assert.equal(libraryItems(books.slice(0, 1))[0].title, books[0].title);
 });
+test('単行本の再掲タイトルから特典付き・限定版を同じシリーズにまとめる', () => {
+  const series = '架空令嬢！～魔法の力で旅をします～';
+  const titles = [
+    `${series}1 ${series}【単行本】 (架空コミックス) (Japanese Edition)`,
+    `${series}1【電子書籍限定版】 ${series}【単行本】【電子書籍限定版】 (架空コミックス) (Japanese Edition)`,
+    ...[2, 3, 4, 5].map(volume => `${series}${volume}【kindle特典付き】 ${series}【単行本】 (架空コミックス) (Japanese Edition)`),
+  ];
+  const books = parse(titles), items = libraryItems(books);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].title, series);
+  assert.equal(items[0].total, 6);
+  assert.deepEqual(books.map(book => book.title), titles);
+  assert.deepEqual(sortVolumes(books).map(book => book.volume), [5, 4, 3, 2, 1, 1]);
+  assert.equal(deriveSeries('架空の別作品1 架空令嬢【単行本】 (架空コミックス)').seriesTitle, '架空の別作品1 架空令嬢【単行本】');
+});
 test('検索は元タイトル・著者・ASINに一致する巻だけを返す', () => {
   const books = parseLibrary(JSON.stringify([
     { title: '架空漫画 1', authors: ['架空著者'], asin: 'B000000001', mangaOrComicAsin: true },
@@ -55,6 +70,23 @@ test('ローマ数字・漢数字・上下巻の最大巻を選ぶ', () => {
     [['架空譚 第十巻', '架空譚 第十二巻'], [12, 10]],
     [['架空譚（上）', '架空譚（下）'], [3, 1]],
   ]) assert.deepEqual(sortVolumes(parse(titles)).map(book => book.volume), expected);
+});
+test('続編名のローマ数字より巻数表記を優先してシリーズを分離する', () => {
+  const books = parse([
+    '架空譚　1巻', '架空譚　2巻',
+    '架空譚ＩＩ　～太陽の旅～　1巻 (Japanese Edition)',
+    '架空譚ＩＩ　～太陽の旅～　2巻 (Japanese Edition)',
+    '架空譚ＩＩ　～太陽の旅～　3巻 (Japanese Edition)',
+    '架空譚ＩＩ　～太陽の旅～　4巻 (Japanese Edition)',
+  ]);
+  const items = libraryItems(books);
+  assert.deepEqual(items.map(item => [item.title, item.total]), [['架空譚', 2], ['架空譚ＩＩ　～太陽の旅～', 4]]);
+  assert.deepEqual(sortVolumes(items[1].books).map(book => book.volume), [4, 3, 2, 1]);
+  for (const marker of ['第3巻', '第三巻', '（３）', '3']) {
+    const result = deriveSeries(`架空譚Ⅱ ～太陽の旅～ ${marker}`);
+    assert.equal(result.seriesTitle, '架空譚Ⅱ ～太陽の旅～');
+    assert.equal(result.volume, 3);
+  }
 });
 test('巻数不明は末尾にタイトル順、全冊不明なら先頭を選ぶ', () => {
   const books = [{ id: 1, title: 'い', volume: null }, { id: 2, title: 'あ', volume: null }, { id: 3, title: '巻3', volume: 3 }, { id: 4, title: '巻12', volume: 12 }];

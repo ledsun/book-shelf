@@ -35,7 +35,7 @@ function volumeNumber(value) {
 export function deriveSeries(title) {
   const text = normalize(title).replace(bonus, '').trim();
   const tail = text.replace(/\s*\(Japanese Edition\)$/u, '').replace(/\s+\([^()]*\)$/u, '');
-  for (const match of tail.matchAll(/(?<!\d)(\d+)\s+(.+?)\s*【コミック版】$/gu)) {
+  for (const match of tail.matchAll(/(?<!\d)(\d+)(?:【電子書籍限定版】)?\s+(.+?)\s*【(?:コミック版|単行本)】(?:【電子書籍限定版】)?$/gu)) {
     const seriesTitle = match[2].trim(), seriesKey = seriesComparisonKey(seriesTitle);
     if (seriesKey && seriesComparisonKey(tail.slice(0, match.index)).startsWith(seriesKey)) {
       return { seriesKey, seriesTitle: displayTitle(title, seriesKey, seriesTitle), volume: Number(match[1]) };
@@ -49,11 +49,11 @@ export function deriveSeries(title) {
     /[\(〈<](?:上|中|下|前編|後編)[\)〉>]/u,
     /(?:\s|(?<=[。!】]))(?:上|中|下)(?:巻)?(?=\s|$|[<(])/u,
     /\d+(?=\s*(?:\((?!\d)|【|<|$))/u, /\s+\d+(?=[\-~])/u,
-    /(?<=[^A-Za-z])(?:XVIII|XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|V|X|I)(?=\s|$|~)/iu,
   ];
-  // Match the same first boundary as the measured algorithm, preserving title digits.
+  // Prefer other volume markers so Roman numerals in sequel names stay in the title.
   const candidates = patterns.map(pattern => text.match(pattern)).filter(Boolean).sort((a, b) => a.index - b.index);
-  const match = candidates.find(candidate => candidate.index > 0);
+  const roman = text.match(/(?<=[^A-Za-z])(?:XVIII|XVII|XVI|XV|XIV|XIII|XII|XI|IX|VIII|VII|VI|IV|III|II|V|X|I)(?=\s|$|~)/iu);
+  const match = candidates.find(candidate => candidate.index > 0) ?? roman;
   const seriesTitle = match ? text.slice(0, match.index).replace(/[ :]+$/u, '') : tail;
   const seriesKey = seriesComparisonKey(seriesTitle);
   return { seriesKey, seriesTitle: displayTitle(title, seriesKey, seriesTitle), volume: match ? volumeNumber(match[0]) : null };
