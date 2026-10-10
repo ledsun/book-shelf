@@ -1,30 +1,55 @@
 import { parseLibrary, searchBooks, amazonUrl, safeCoverUrl } from './library.js';
 import { openDatabase, readLibrary, replaceLibrary } from './storage.js';
+import { libraryItems, sortVolumes } from './series.js';
 const $ = id => document.getElementById(id);
-let db, books = [], matches = [], shown = 0, importedAt = null, busy = false, timer;
+let db, books = [], matches = [], items = [], shown = 0, importedAt = null, busy = false, timer;
 function summary() {
-  $('summary').textContent = `登録済み: ${books.length.toLocaleString()}冊 / 最終インポート: ${importedAt ? new Date(importedAt).toLocaleString('ja-JP') : '未実施'}`;
+  $('summary').textContent = `登録済み: ${books.length.toLocaleString()}冊 / ${items.filter(item => item.isSeries).length.toLocaleString()}シリーズ / 最終インポート: ${importedAt ? new Date(importedAt).toLocaleString('ja-JP') : '未実施'}`;
 }
 function renderMore() {
   const fragment = document.createDocumentFragment();
-  for (const book of matches.slice(shown, shown + 50)) {
+  for (const item of matches.slice(shown, shown + 50)) {
     const li = document.createElement('li'), button = document.createElement('button');
     const title = document.createElement('strong'), author = document.createElement('span'), type = document.createElement('small');
-    title.textContent = book.title; author.textContent = book.author || '著者情報なし'; type.textContent = book.mangaOrComic === true ? '漫画・コミック' : book.mangaOrComic === false ? '通常の書籍' : '種別不明';
-    button.append(title, author, type); button.onclick = () => showDetail(book); li.append(button); fragment.append(li);
+    const book = item.books[0];
+    title.textContent = item.title; author.textContent = item.author || '著者情報なし'; type.textContent = item.isSeries ? `漫画・コミック · 一致${item.books.length}冊 / 所有${item.total}冊` : book.mangaOrComic === true ? '漫画・コミック' : book.mangaOrComic === false ? '通常の書籍' : '種別不明';
+    button.append(title, author, type); button.onclick = () => showDetail(item); li.append(button); fragment.append(li);
   }
   shown = Math.min(shown + 50, matches.length); $('results').append(fragment);
   $('more').hidden = shown >= matches.length;
 }
 function search() {
-  matches = searchBooks(books, $('search').value); shown = 0; $('results').replaceChildren();
-  $('counts').textContent = `登録済み ${books.length.toLocaleString()}冊 · 検索結果 ${matches.length.toLocaleString()}件`;
+  const found = new Set(searchBooks(books, $('search').value));
+  matches = items.map(item => ({ ...item, books: item.books.filter(book => found.has(book)) })).filter(item => item.books.length); shown = 0; $('results').replaceChildren();
+  $('counts').textContent = `登録済み ${books.length.toLocaleString()}冊 / ${items.filter(item => item.isSeries).length.toLocaleString()}シリーズ · 検索結果 ${matches.reduce((sum, item) => sum + item.books.length, 0).toLocaleString()}冊 / ${matches.length.toLocaleString()}件`;
   $('message').textContent = books.length ? matches.length ? '' : '該当する書籍はありません。' : 'データ管理から蔵書JSONをインポートしてください。';
   renderMore(); summary();
 }
 function clearCover() { $('cover-image').onload = null; $('cover-image').onerror = null; $('cover-image').removeAttribute('src'); $('cover-image').hidden = true; }
 $('detail').addEventListener('close', clearCover);
-function showDetail(book) {
+function showDetail(item) {
+  const volumes = sortVolumes(item.books);
+  $('detail-heading').textContent = item.isSeries ? 'シリーズ詳細' : '書籍詳細';
+  $('series-detail').hidden = !item.isSeries;
+  $('series-title').textContent = item.isSeries ? item.title : '';
+  $('series-count').textContent = item.isSeries ? `一致${volumes.length}冊 / 所有${item.total}冊` : '';
+  $('volume-list').replaceChildren();
+  const buttons = [];
+  for (const book of item.isSeries ? volumes : []) {
+    const li = document.createElement('li'), button = document.createElement('button');
+    button.textContent = book.title;
+    button.setAttribute('aria-pressed', 'false');
+    button.onclick = () => {
+      for (const entry of buttons) entry.button.setAttribute('aria-pressed', String(entry.book === book));
+      showBook(book);
+    };
+    buttons.push({ button, book }); li.append(button); $('volume-list').append(li);
+  }
+  if (buttons.length) buttons[0].button.setAttribute('aria-pressed', 'true');
+  showBook(volumes[0]);
+  $('detail').showModal();
+}
+function showBook(book) {
   clearCover();
   const image = $('cover-image');
   const coverUrl = safeCoverUrl(book.coverUrl);
@@ -38,7 +63,6 @@ function showDetail(book) {
   $('detail-title').textContent = book.title; $('detail-author').textContent = book.author || '著者情報なし'; $('detail-asin').textContent = book.asin || 'なし';
   const url = amazonUrl(book.asin); $('amazon').hidden = !url;
   if (url) $('amazon').href = url; else $('amazon').removeAttribute('href');
-  $('detail').showModal();
 }
 function setBusy(value) { busy = value; $('file').disabled = value || !db; $('delete').disabled = value || !db; $('management').setAttribute('aria-busy', String(value)); }
 $('settings').onclick = () => { summary(); $('management').showModal(); };
@@ -57,7 +81,7 @@ $('file').onchange = async () => {
     const date = new Date().toISOString();
     $('import-status').textContent = 'インポート中…端末に保存しています。';
     await replaceLibrary(db, result.books, date);
-    books = result.books; importedAt = date; search();
+    books = result.books; items = libraryItems(books); importedAt = date; search();
     $('import-status').textContent = `${books.length.toLocaleString()}冊を取り込みました（入力${result.total}件、不正${result.skipped}件、重複${result.duplicates}件をスキップ）。`;
   } catch (error) { $('import-status').textContent = `インポート失敗: ${error.message} 既存データは保持されています。`; }
   finally { $('file').value = ''; setBusy(false); }
@@ -65,11 +89,11 @@ $('file').onchange = async () => {
 $('delete').onclick = async () => {
   if (busy || !db || !confirm('端末内の全蔵書データを削除しますか？')) return;
   setBusy(true);
-  try { await replaceLibrary(db, [], null); books = []; importedAt = null; search(); $('import-status').textContent = '全データを削除しました。'; }
+  try { await replaceLibrary(db, [], null); books = []; items = []; importedAt = null; search(); $('import-status').textContent = '全データを削除しました。'; }
   catch (error) { $('import-status').textContent = `削除失敗: ${error.message}`; }
   finally { setBusy(false); }
 };
 setBusy(false);
-try { db = await openDatabase(); ({ books, importedAt } = await readLibrary(db)); search(); setBusy(false); }
+try { db = await openDatabase(); ({ books, importedAt } = await readLibrary(db)); items = libraryItems(books); search(); setBusy(false); }
 catch (error) { $('message').textContent = `保存領域を開けません: ${error.message} ブラウザ設定を確認して再読み込みしてください。`; }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => { $('message').textContent += ' オフライン準備に失敗しました。オンラインで再読み込みしてください。'; });
