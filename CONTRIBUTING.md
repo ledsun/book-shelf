@@ -17,6 +17,19 @@ BROWSER_PATH=/usr/bin/google-chrome npm run test:browser
 
 テストは架空の書籍のみを生成します。ブラウザテストはプロジェクトサブパスとモバイルサイズで実施します。
 
+## README用動画
+
+開発依存とChrome、PlaywrightのFFmpegを用意した後、次のコマンドで撮影できます。
+
+```sh
+npx playwright install ffmpeg
+npm run demo:video
+# 別のChromeを使う場合
+BROWSER_PATH=/path/to/chrome npm run demo:video
+```
+
+390 × 844pxのモバイル表示で、検索・書籍詳細・漫画3巻の切り替えを録画します。動画とプレビュー画像は `docs/videos/` に保存します。架空の蔵書を生成し、書影のリクエストは撮影時だけ自作SVGで応答します。実データや外部の書影は使用しません。アプリ本体の書影処理は通常どおり動作します。動画・撮影スクリプトはPagesの公開対象に含まれません。
+
 ## README用スクリーンショット
 
 開発依存とChromeを用意した後、次のコマンドで撮影できます。

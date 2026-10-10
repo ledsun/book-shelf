@@ -2,14 +2,13 @@
 
 Kindleからエクスポートした蔵書JSONを、Android端末内で検索する個人用PWAです。
 
-## スクリーンショット
+## 操作デモ
 
-スマートフォンサイズ（390 × 844px）の検索画面です。Chromeのモバイル表示で撮影し、書籍・著者はすべて架空のデータを使用しています。
+スマートフォンサイズ（390 × 844px）で、検索・書籍詳細・漫画の巻切り替えを紹介する動画です。蔵書・著者はすべて架空で、表紙もデモ用に自作しています。
 
-<p>
-  <img src="docs/screenshots/search-light.png" width="300" alt="ライトモードの蔵書検索画面。Rubyの検索結果と著者、漫画・コミックの種別を表示。">
-  <img src="docs/screenshots/search-dark.png" width="300" alt="ダークモードの蔵書検索画面。Rubyの検索結果と著者、漫画・コミックの種別を表示。">
-</p>
+[![BookShelfの操作デモ。クリックして動画を開く](docs/videos/poster.png)](docs/videos/bookshelf-demo.webm)
+
+[動画を開く（WebM）](docs/videos/bookshelf-demo.webm)
 
 ## 表示データ
 
