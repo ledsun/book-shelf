@@ -71,6 +71,39 @@ export function libraryItems(books) {
     return { ...item, isSeries, title: isSeries ? book.seriesTitle : book.title, author: book.author, total: item.books.length };
   });
 }
+export function volumeLabel(book) {
+  // Remove the series prefix before looking for numbers, including sequel names.
+  const key = book.seriesKey || seriesComparisonKey(book.seriesTitle || '');
+  let remainder = book.title;
+  if (key) {
+    let prefix = '';
+    for (const character of book.title) {
+      prefix += character;
+      if (seriesComparisonKey(prefix.replace(bonus, '')) === key) {
+        remainder = book.title.slice(prefix.length);
+        break;
+      }
+    }
+  }
+  const text = normalize(remainder).replace(bonus, '').trim();
+  const digits = text.match(/^[\s:(〈<\[]*(?:第\s*|vol\.?\s*|その\s*)?(\d+)(?=\s|$|[巻集)〉>\]【(])/iu);
+  if (digits) return String(Number(digits[1]));
+  const kanji = text.match(/^[\s:(〈<\[]*(?:第\s*)?([〇零一二三四五六七八九十百千壱弐参]+)(?=\s|$|[巻集)〉>\]【(])/u);
+  if (kanji) return kanji[1];
+  const roman = text.match(/^[\s:(〈<\[]*(?:vol\.?\s*)?([IVX]+)(?=\s|$|[巻集)〉>\]【(~])/iu);
+  if (roman) {
+    const number = volumeNumber(roman[1]);
+    const glyphs = ['Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ', 'Ⅴ', 'Ⅵ', 'Ⅶ', 'Ⅷ', 'Ⅸ', 'Ⅹ', 'Ⅺ', 'Ⅻ'];
+    return glyphs[number - 1] || roman[1].toUpperCase();
+  }
+  const named = text.match(/^[\s:(〈<\[]*(上|中|下|前編|後編)(?=\s|$|巻|[)〉>\]【(])/u);
+  if (named) return named[1];
+  // Import already identifies volumes after subtitles and before repeated titles.
+  if (Number.isFinite(book.volume)) return String(book.volume);
+  // Repeated series names are redundant even when a volume cannot be identified.
+  const fallback = book.seriesTitle ? remainder.split(book.seriesTitle).join('').trim() : remainder.trim();
+  return fallback || book.title;
+}
 export function sortVolumes(books) {
   return [...books].sort((a, b) => {
     const av = Number.isFinite(a.volume) ? a.volume : null, bv = Number.isFinite(b.volume) ? b.volume : null;

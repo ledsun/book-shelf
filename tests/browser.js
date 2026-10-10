@@ -50,7 +50,7 @@ try{
  assert.equal(imageRequests,beforeSeries+1);
  assert.equal(await page.locator('#volume-list button').count(),3);
  assert.match(await page.locator('#detail-title').textContent(),/12/);
- assert.match(await page.locator('#volume-list button').first().textContent(),/12/);
+ assert.deepEqual(await page.locator('#volume-list button').allTextContents(), ['12', '2', '1']);
  assert.equal(await page.locator('#amazon').getAttribute('href'),'https://www.amazon.co.jp/dp/B100000012');
  await page.locator('#volume-list button').last().click();
  await page.waitForFunction(()=>!document.querySelector('#cover-image').hidden);

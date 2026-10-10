@@ -1,8 +1,25 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLibrary, searchBooks } from '../app/library.js';
-import { deriveSeries, libraryItems, sortVolumes } from '../app/series.js';
+import { deriveSeries, libraryItems, sortVolumes, volumeLabel, seriesComparisonKey } from '../app/series.js';
 const parse = titles => parseLibrary(JSON.stringify(titles.map(title => ({ title, mangaOrComicAsin: true })))).books;
+
+test('巻ラベルは作品名の数字を除き、元の巻表記を短く表示する', () => {
+  for (const [suffix, expected] of [
+    [' 第３巻', '3'], ['（１７）', '17'], [' 第三巻', '三'], ['（五）【電子限定特典付き】', '五'],
+    ['Ⅲ', 'Ⅲ'], [' IX', 'Ⅸ'], ['（上）', '上'], [' 下巻', '下'], ['（後編）', '後編'],
+    [' 特別編', '特別編'], [' 3巻【特典付き】', '3'],
+  ]) {
+    const seriesTitle = '架空13Ⅱ';
+    assert.equal(volumeLabel({ title: seriesTitle + suffix, seriesTitle, seriesKey: seriesComparisonKey(seriesTitle) }), expected);
+  }
+  const seriesTitle = '架空令嬢～旅～';
+  for (const title of [`${seriesTitle}1 ${seriesTitle}【単行本】`, `${seriesTitle}1【電子書籍限定版】 ${seriesTitle}【単行本】`]) {
+    assert.equal(volumeLabel({ title, ...deriveSeries(title) }), '1');
+  }
+  const subtitle = '架空小町 海の旅 20【特典付き】 架空小町【コミック版】';
+  assert.equal(volumeLabel({ title: subtitle, ...deriveSeries(subtitle) }), '20');
+});
 
 test('巻数表記を揃え、作品名の数字・続編名を保持する', () => {
   const books = parse(['架空13（１） (コミックス)', '架空13 2 (コミックス)', '架空13NEO 1 (コミックス)', '架空13NEO 2 (コミックス)', '架空13 外伝 第1巻 (コミックス)']);

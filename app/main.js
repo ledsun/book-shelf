@@ -1,6 +1,6 @@
 import { parseLibrary, searchBooks, amazonUrl, safeCoverUrl } from './library.js';
 import { openDatabase, readLibrary, replaceLibrary } from './storage.js';
-import { libraryItems, sortVolumes } from './series.js';
+import { libraryItems, sortVolumes, volumeLabel } from './series.js';
 const $ = id => document.getElementById(id);
 let db, books = [], matches = [], items = [], shown = 0, importedAt = null, busy = false, timer;
 function summary() {
@@ -37,7 +37,7 @@ function showDetail(item) {
   const buttons = [];
   for (const book of item.isSeries ? volumes : []) {
     const li = document.createElement('li'), button = document.createElement('button');
-    button.textContent = book.title;
+    button.textContent = volumeLabel(book);
     button.setAttribute('aria-pressed', 'false');
     button.onclick = () => {
       for (const entry of buttons) entry.button.setAttribute('aria-pressed', String(entry.book === book));
