@@ -1,10 +1,49 @@
 # BookShelf
 
-Kindleからエクスポートした蔵書JSONを、Android端末内で検索する個人用PWAです。タイトル・著者・ASINの部分一致、空白区切りのAND検索、詳細表示、Amazon商品リンク、JSONによる全件更新、データ削除に対応します。大文字小文字を区別せず、Unicode NFKCで全角英数字も正規化します。
+Kindleからエクスポートした蔵書JSONを、Android端末内で検索する個人用PWAです。
 
-HTML/CSS・Vanilla JavaScript ES Modules・IndexedDB・Service Workerで構成し、ビルドと外部ランタイム依存はありません。検索文字列を事前生成し、入力を120ms debounce、結果は50件ずつ追加表示します。
+## 表示データ
 
-## ローカル起動・テスト
+- タイトル
+- 著者
+- ASIN
+- 漫画・コミック判定フラグ
+- 商品リンク
+
+## 技術スタック
+
+- HTML/CSS
+- Vanilla JavaScript ES Modules
+- IndexedDB
+- Service Worker
+
+ビルドと外部ランタイム依存はありません。
+
+初回アクセスでアプリの静的ファイルをキャッシュします。
+準備完了後はオフライン起動・検索・インポートができます。
+書影の表示やAmazonリンクを開くには通信が必要です。
+
+## Android Chromeでの使い方
+
+1. 公開URLにオンラインでアクセスします。
+2. Chromeメニューから「ホーム画面に追加」または「アプリをインストール」を選択します（表記は端末で異なります）。
+3. 「データ管理」からJSONファイルを選択します。結果に取込冊数、不正・重複のスキップ件数が表示されます。
+4. 更新時は新しいJSONを選び、既存データの全件置換します。
+
+
+## 入力データの作成
+
+BookShelf本体はAmazonへのログインや直接同期を行いません。
+[Kindle蔵書エクスポートツール（ExportKindle.js）](https://gist.github.com/ledsun/21f83c4e48cf6fe51e4b6848e8671656) で、BookShelfに取り込む `books.json` を作成できます。
+
+1. PCのChromeで [Kindle Cloud Reader](https://read.amazon.co.jp/) を開き、Amazonにログインします。
+2. Chromeの開発者ツールを開き、Consoleタブを選択します。
+3. Gistの `ExportKindle.js` の内容を確認し、Consoleで実行します。
+4. 取得が完了すると `books.json` がダウンロードされます。
+5. ファイルをAndroid端末へ移し、BookShelfの「データ管理」からインポートします。
+
+## 開発者向け情報
+### ローカル起動・テスト
 
 ```sh
 python3 -m http.server 8000 --directory app
@@ -19,38 +58,17 @@ BROWSER_PATH=/usr/bin/google-chrome npm run test:browser
 
 テストは架空の書籍のみを生成します。ブラウザテストはプロジェクトサブパスとモバイルサイズで実施します。
 
-## GitHub Pages
+### GitHub Pages
 
-GitHubリポジトリの Settings → Pages → Build and deployment → Source を **GitHub Actions** に設定してください。mainへのpushでテスト後に公式Pages Actionsが `app/` のみを公開します。初回はActionsの実行許可も確認してください。公開URLは通常 `https://<user>.github.io/<repository-name>/` です。相対URLで任意のプロジェクトサブパスに対応します。実データ、テスト、開発依存はデプロイしません。
+GitHubリポジトリの Settings → Pages → Build and deployment → Source を **GitHub Actions** に設定してください。
 
-自動実行の対象は `app/`、`tests/`、`package.json`、`package-lock.json`、Pagesワークフローの変更です。READMEだけの変更ではテスト・デプロイを起動しません。必要な場合はActions画面から手動実行できます。
+mainへのpushでテスト後に公式Pages Actionsが `app/` を公開します。公開URLは通常 `https://<user>.github.io/<repository-name>/` です。
 
-静的ファイルを更新するときは `app/sw.js` のCACHEバージョンを変更してください。更新したService Workerは既存タブを閉じて再度開くと適用されます。IndexedDBは更新時に削除しません。
+静的ファイルを更新するときは `app/sw.js` のCACHEバージョンを変更してください。
+更新したService Workerは既存タブを閉じて再度開くと適用されます。
+更新時にIndexedDBは削除しません。
 
-## Android Chromeでの使い方
-
-1. 公開URLにオンラインでアクセスします。
-2. Chromeメニューから「ホーム画面に追加」または「アプリをインストール」を選択します（表記は端末で異なります）。
-3. 「データ管理」からJSONファイルを選択します。結果に取込冊数、不正・重複のスキップ件数が表示されます。
-4. 更新時も新しいJSONを選び、既存データの全件置換を確認します。差分追加ではありません。
-
-初回アクセスでアプリの静的ファイルをキャッシュします。準備完了後はオフライン起動・検索・インポートができます。Amazonリンクを開くには通信が必要です。
-
-## 入力データの作成
-
-[Kindle蔵書エクスポートツール（ExportKindle.js）](https://gist.github.com/ledsun/21f83c4e48cf6fe51e4b6848e8671656) で、BookShelfに取り込む `books.json` を作成できます。
-
-1. PCのChromeで [Kindle Cloud Reader](https://read.amazon.co.jp/) を開き、Amazonにログインします。
-2. Chromeの開発者ツールを開き、Consoleタブを選択します。
-3. Gistの `ExportKindle.js` の内容を確認し、Consoleで実行します。
-4. 取得が完了すると `books.json` がダウンロードされます。
-5. ファイルをAndroid端末へ移し、BookShelfの「データ管理」からインポートします。
-
-ツールはKindle Cloud Reader上で蔵書一覧をページごとに取得し、ASINで重複を除いた配列を出力します。書影用の `productUrl` と漫画判定用の `mangaOrComicAsin` も含まれます。蔵書を更新するときはツールを再実行し、新しいJSONを全件置換でインポートしてください。
-
-このツールはAmazonの内部APIを利用するため、Amazon側の変更で動作しなくなる可能性があります。BookShelf本体はAmazonへのログインや直接同期を行いません。作成したJSONには個人の蔵書情報が含まれるため、公開リポジトリやGistにはアップロードしないでください。
-
-## 入力JSON
+### 入力JSON
 
 リポジトリに置かれていた非公開の入力ファイルでは、トップレベル配列と `asin`（文字列）、`title`（文字列）、`authors`（文字列配列）、`productUrl`（Amazon画像URL）を確認しました。これは観測した形式であり、Amazonの正式なAPI仕様ではありません。
 
