@@ -9,9 +9,9 @@ function renderMore() {
   const fragment = document.createDocumentFragment();
   for (const book of matches.slice(shown, shown + 50)) {
     const li = document.createElement('li'), button = document.createElement('button');
-    const title = document.createElement('strong'), author = document.createElement('span'), asin = document.createElement('small');
-    title.textContent = book.title; author.textContent = book.author || '著者情報なし'; asin.textContent = book.asin || 'ASINなし';
-    button.append(title, author, asin); button.onclick = () => showDetail(book); li.append(button); fragment.append(li);
+    const title = document.createElement('strong'), author = document.createElement('span'), type = document.createElement('small');
+    title.textContent = book.title; author.textContent = book.author || '著者情報なし'; type.textContent = book.mangaOrComic === true ? '漫画・コミック' : book.mangaOrComic === false ? '通常の書籍' : '種別不明';
+    button.append(title, author, type); button.onclick = () => showDetail(book); li.append(button); fragment.append(li);
   }
   shown = Math.min(shown + 50, matches.length); $('results').append(fragment);
   $('more').hidden = shown >= matches.length;

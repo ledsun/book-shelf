@@ -17,7 +17,7 @@ export function parseLibrary(text) {
     const authors = (Array.isArray(source) ? source : [source]).map(a => typeof a === 'string' ? a.trim() : a && typeof a === 'object' ? first(a, ['name', 'displayName']) : '').filter(Boolean);
     const author = authors.join('、');
     const coverUrl = safeCoverUrl(record.productUrl);
-    books.push({ coverUrl, id: books.length + 1, title, author, asin, search: fold([title, author, asin].join('\n')) });
+    books.push({ mangaOrComic: typeof record.mangaOrComicAsin === 'boolean' ? record.mangaOrComicAsin : null, coverUrl, id: books.length + 1, title, author, asin, search: fold([title, author, asin].join('\n')) });
   }
   if (!books.length) throw new Error('取り込める書籍がありません。既存データは変更していません。');
   return { books, skipped, duplicates, total: records.length };
