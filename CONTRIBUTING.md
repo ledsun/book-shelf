@@ -23,12 +23,18 @@ BROWSER_PATH=/usr/bin/google-chrome npm run test:browser
 
 ```sh
 npx playwright install ffmpeg
-npm run demo:video
+node scripts/demo-video.js
 # 別のChromeを使う場合
-BROWSER_PATH=/path/to/chrome npm run demo:video
+BROWSER_PATH=/path/to/chrome node scripts/demo-video.js
 ```
 
-390 × 844pxのモバイル表示で、検索・書籍詳細・漫画3巻の切り替えを録画します。動画とプレビュー画像は `docs/videos/` に保存します。架空の蔵書を生成し、書影のリクエストは撮影時だけ自作SVGで応答します。実データや外部の書影は使用しません。アプリ本体の書影処理は通常どおり動作します。動画・撮影スクリプトはPagesの公開対象に含まれません。
+390 × 844pxのモバイル表示で、検索・書籍詳細・漫画3巻の切り替えを録画します。動画とプレビュー画像は `docs/videos/` に保存します。架空の蔵書を生成し、書影のリクエストは撮影時だけ自作SVGで応答します。実データや外部の書影は使用しません。アプリ本体の書影処理は通常どおり動作します。動画・撮影スクリプトはPagesの公開対象に含まれません。README・動画・撮影スクリプトのみの変更ではGitHub Actionsは起動しません（`package.json` の変更は起動対象です）。
+
+README内で再生するGIFは、通常版のFFmpegを使って動画から生成できます（Playwright同梱版はGIF変換に対応していません）。
+
+```sh
+ffmpeg -y -i docs/videos/bookshelf-demo.webm -filter_complex "fps=5,scale=300:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128[p];[b][p]paletteuse" -loop 0 docs/videos/bookshelf-demo.gif
+```
 
 ## README用スクリーンショット
 

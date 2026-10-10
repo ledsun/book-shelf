@@ -6,9 +6,9 @@ Kindleからエクスポートした蔵書JSONを、Android端末内で検索す
 
 スマートフォンサイズ（390 × 844px）で、検索・書籍詳細・漫画の巻切り替えを紹介する動画です。蔵書・著者はすべて架空で、表紙もデモ用に自作しています。
 
-[![BookShelfの操作デモ。クリックして動画を開く](docs/videos/poster.png)](docs/videos/bookshelf-demo.webm)
+<img src="docs/videos/bookshelf-demo.gif" width="300" alt="BookShelfの操作デモ。検索・書籍詳細・漫画の巻切り替え。">
 
-[動画を開く（WebM）](docs/videos/bookshelf-demo.webm)
+[動画をダウンロード（WebM）](https://raw.githubusercontent.com/ledsun/book-shelf/main/docs/videos/bookshelf-demo.webm)してChromeなどで再生できます。
 
 ## 表示データ
 
