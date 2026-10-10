@@ -1,4 +1,4 @@
-import { parseLibrary, searchBooks, amazonUrl } from './library.js';
+import { parseLibrary, searchBooks, amazonUrl, safeCoverUrl } from './library.js';
 import { openDatabase, readLibrary, replaceLibrary } from './storage.js';
 const $ = id => document.getElementById(id);
 let db, books = [], matches = [], shown = 0, importedAt = null, busy = false, timer;
@@ -22,7 +22,19 @@ function search() {
   $('message').textContent = books.length ? matches.length ? '' : '該当する書籍はありません。' : 'データ管理から蔵書JSONをインポートしてください。';
   renderMore(); summary();
 }
+function clearCover() { $('cover-image').onload = null; $('cover-image').onerror = null; $('cover-image').removeAttribute('src'); $('cover-image').hidden = true; }
+$('detail').addEventListener('close', clearCover);
 function showDetail(book) {
+  clearCover();
+  const image = $('cover-image');
+  const coverUrl = safeCoverUrl(book.coverUrl);
+  $('cover-status').textContent = coverUrl ? navigator.onLine ? '書影を読み込み中…' : 'オフラインのため書影を表示できません。' : '書影情報がありません。新しいJSONを再インポートすると反映されます。';
+  if (coverUrl && navigator.onLine) {
+    image.alt = `${book.title}の書影`;
+    image.onload = () => { image.hidden = false; $('cover-status').textContent = ''; };
+    image.onerror = () => { image.hidden = true; $('cover-status').textContent = '書影を取得できませんでした。'; };
+    image.src = coverUrl;
+  }
   $('detail-title').textContent = book.title; $('detail-author').textContent = book.author || '著者情報なし'; $('detail-asin').textContent = book.asin || 'なし';
   const url = amazonUrl(book.asin); $('amazon').hidden = !url;
   if (url) $('amazon').href = url; else $('amazon').removeAttribute('href');

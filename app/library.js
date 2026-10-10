@@ -16,7 +16,8 @@ export function parseLibrary(text) {
     const source = record.authors ?? record.author ?? record.Authors ?? record.Author;
     const authors = (Array.isArray(source) ? source : [source]).map(a => typeof a === 'string' ? a.trim() : a && typeof a === 'object' ? first(a, ['name', 'displayName']) : '').filter(Boolean);
     const author = authors.join('、');
-    books.push({ id: books.length + 1, title, author, asin, search: fold([title, author, asin].join('\n')) });
+    const coverUrl = safeCoverUrl(record.productUrl);
+    books.push({ coverUrl, id: books.length + 1, title, author, asin, search: fold([title, author, asin].join('\n')) });
   }
   if (!books.length) throw new Error('取り込める書籍がありません。既存データは変更していません。');
   return { books, skipped, duplicates, total: records.length };
@@ -26,3 +27,12 @@ export function searchBooks(books, query) {
   return books.filter(book => words.every(word => book.search.includes(word)));
 }
 export function amazonUrl(asin) { return /^[A-Z0-9]{10}$/.test(asin) ? `https://www.amazon.co.jp/dp/${encodeURIComponent(asin)}` : null; }
+
+export function safeCoverUrl(value) {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.hostname !== 'm.media-amazon.com' || url.port || url.username || url.password || url.search || url.hash || !/^\/images\/[IP]\/[A-Za-z0-9._+-]+\.(?:jpg|jpeg|png|webp)$/i.test(url.pathname)) return null;
+    return url.href;
+  } catch { return null; }
+}

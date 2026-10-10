@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
 import 'fake-indexeddb/auto';
-import { parseLibrary, searchBooks, amazonUrl } from '../app/library.js';
+import { parseLibrary, searchBooks, amazonUrl, safeCoverUrl } from '../app/library.js';
 import { openDatabase, readLibrary, replaceLibrary } from '../app/storage.js';
 const data = [{asin:'B000000001',title:'Ruby 設計入門',authors:['架空 太郎']},{ASIN:'b000000002',Title:'JavaScript GUIDE',author:{name:'Example Author'}},{title:'日本語の本'}];
 const parse = values => parseLibrary(JSON.stringify(values));
@@ -28,4 +28,10 @@ test('10,000冊の検索性能',()=>{
  const books=parse(records).books;const start=performance.now();
  for(let i=0;i<100;i++)assert.equal(searchBooks(books,'Ruby 設計').length,10000);
  const average=(performance.now()-start)/100;console.log(`10,000冊 AND検索 平均 ${average.toFixed(2)}ms (Node.js)`);assert.ok(average<100);
+});
+
+test('productUrlの書影URLを検証して取り込む', () => {
+ const url='https://m.media-amazon.com/images/I/fiction+image._SY400_.jpg';
+ assert.equal(parse([{title:'架空の書籍',productUrl:url}]).books[0].coverUrl,url);
+ for(const value of ['javascript:alert(1)','https://example.com/cover.jpg','https://m.media-amazon.com.evil.test/images/I/x.jpg','https://user:pass@m.media-amazon.com/images/I/x.jpg','https://m.media-amazon.com/images/I/x.jpg?tracking=1','https://www.amazon.co.jp/dp/B000000001',null]) assert.equal(safeCoverUrl(value),null);
 });
