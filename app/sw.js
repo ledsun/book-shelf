@@ -1,5 +1,5 @@
 const PREFIX = `bookshelf-shell-${self.registration.scope}-`;
-const CACHE = `${PREFIX}v8`;
+const CACHE = `${PREFIX}v9`;
 const ASSETS = ['./', './index.html', './style.css', './main.js', './library.js', './series.js', './storage.js', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'];
 const urls = new Set(ASSETS.map(path => new URL(path, self.registration.scope).href));
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS))); });
