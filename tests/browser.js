@@ -22,7 +22,7 @@ try{
  await page.evaluate(async()=>{await navigator.serviceWorker.ready;});
  await page.locator('#settings').click();
  const upload=async records=>page.locator('#file').setInputFiles({name:'fiction.json',mimeType:'application/json',buffer:Buffer.from(typeof records==='string'?records:JSON.stringify(records))});
- const data=Array.from({length:10000},(_,i)=>({asin:`B${String(i).padStart(9,'0')}`,title:`架空 Ruby 設計 ${i}`,authors:['架空 太郎'],mangaOrComicAsin:i%2===0,productUrl:`https://m.media-amazon.com/images/I/${i===9998?'missing':'fiction'}._SY400_.jpg`}));
+ const data=Array.from({length:10000},(_,i)=>({asin:`B${String(i).padStart(9,'0')}`,title:`架空 Ruby 設計 ${i}`,authors:['架空 太郎'],mangaOrComicAsin:i%2===0,coverImageUrl:`https://m.media-amazon.com/images/I/${i===9998?'missing':'fiction'}._SY400_.jpg`}));
  await upload(data);await page.waitForFunction(()=>document.querySelector('#import-status').textContent.startsWith('10,000冊'));
  assert.equal(await page.locator('#results li').count(),50); assert.equal(imageRequests,0); assert.match(await page.locator('#results li').nth(0).textContent(),/漫画・コミック/); assert.match(await page.locator('#results li').nth(1).textContent(),/通常の書籍/); assert.equal((await page.locator('#results').textContent()).includes('B000000000'),false);
  await upload('{');await page.waitForFunction(()=>document.querySelector('#import-status').textContent.includes('インポート失敗'));assert.match(await page.locator('#summary').textContent(),/10,000/);

@@ -30,9 +30,9 @@ test('10,000冊の検索性能',()=>{
  const average=(performance.now()-start)/100;console.log(`10,000冊 AND検索 平均 ${average.toFixed(2)}ms (Node.js)`);assert.ok(average<100);
 });
 
-test('productUrlの書影URLを検証して取り込む', () => {
+test('coverImageUrlの書影URLを検証して取り込む', () => {
  const url='https://m.media-amazon.com/images/I/fiction+image._SY400_.jpg';
- assert.equal(parse([{title:'架空の書籍',productUrl:url}]).books[0].coverUrl,url);
+ assert.equal(parse([{title:'架空の書籍',coverImageUrl:url}]).books[0].coverUrl,url);
  for(const value of ['javascript:alert(1)','https://example.com/cover.jpg','https://m.media-amazon.com.evil.test/images/I/x.jpg','https://user:pass@m.media-amazon.com/images/I/x.jpg','https://m.media-amazon.com/images/I/x.jpg?tracking=1','https://www.amazon.co.jp/dp/B000000001',null]) assert.equal(safeCoverUrl(value),null);
 });
 
@@ -40,4 +40,12 @@ test('漫画フラグは真偽値のみを採用し欠損は不明', () => {
  const values=[true,false,undefined,'false',1];
  const books=parse(values.map((value,i)=>({title:`架空の書籍${i}`,mangaOrComicAsin:value}))).books;
  assert.deepEqual(books.map(b=>b.mangaOrComic),[true,false,null,null,null]);
+});
+
+test('書影はcoverImageUrlのみから取り込む', () => {
+ const url='https://m.media-amazon.com/images/I/fiction.jpg';
+ for (const coverImageUrl of [undefined,null,'https://example.com/cover.jpg']) {
+  const book=parse([{title:'架空の書籍',coverImageUrl,productUrl:url}]).books[0];
+  assert.equal(book.coverUrl,null);
+ }
 });

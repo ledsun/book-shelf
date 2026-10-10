@@ -37,7 +37,7 @@ mainへのpushでテスト後に公式Pages Actionsが `app/` を公開します
     "asin": "B000000001",
     "title": "架空のRuby設計入門",
     "authors": ["架空 太郎"],
-    "productUrl": "https://m.media-amazon.com/images/I/fiction-book._SY400_.jpg",
+    "coverImageUrl": "https://m.media-amazon.com/images/I/fiction-book._SY400_.jpg",
     "mangaOrComicAsin": false,
     "originType": null
   },
@@ -45,7 +45,7 @@ mainへのpushでテスト後に公式Pages Actionsが `app/` を公開します
     "asin": "B000000002",
     "title": "架空の漫画",
     "authors": ["架空 花子", "架空 次郎"],
-    "productUrl": null,
+    "coverImageUrl": null,
     "mangaOrComicAsin": true,
     "originType": null
   }
@@ -59,11 +59,13 @@ mainへのpushでテスト後に公式Pages Actionsが `app/` を公開します
 | `title` | 文字列 | 必須。前後の空白を除去し、空または文字列でないタイトルのレコードはスキップ。検索・一覧・詳細に使用。 |
 | `asin` | 文字列 | 任意。前後の空白を除去して大文字に正規化し、重複排除・検索・詳細に使用。一覧には表示しない。 |
 | `authors` | 文字列配列 | 任意。著者名を「、」で結合し、検索・一覧・詳細に使用。欠損時は著者情報なしとして取り込む。 |
-| `productUrl` | 文字列または `null` | 任意。商品ページではなく書影の画像URL。検証を通るURLだけを保存し、詳細表示時に読み込む。 |
+| `coverImageUrl` | 文字列または `null` | 任意。商品ページではなく書影の画像URL。検証を通るURLだけを保存し、詳細表示時に読み込む。 |
 | `mangaOrComicAsin` | 真偽値または `null` | 任意。`true` は「漫画・コミック」、`false` は「通常の書籍」、欠損・それ以外の値は「種別不明」と表示。 |
 | `originType` | ツールが出力する値または `null` | 使用・保存しない。上記以外のフィールドも取り込まない。 |
 
 書影URLはHTTPSの `m.media-amazon.com` に限定し、パスは `/images/I/` または `/images/P/` 直下、ファイル名は英数字・`.`・`_`・`+`・`-`、拡張子は `jpg` / `jpeg` / `png` / `webp` を受け付けます。認証情報、標準以外のポート、クエリ、フラグメントを含むURLは拒否します。不正な書影URLでも書籍自体は取り込めます。
+
+書影は `coverImageUrl` のみを使用します。欠損・`null`・不正な値の場合は書影なしとして取り込みます。
 
 互換形式として `{"itemsList":[...]}` も受け付けます。タイトルは `title` / `Title` / `name`、ASINは `asin` / `ASIN`、著者は `authors` / `author` / `Authors` / `Author` に対応します。著者には文字列、文字列配列、`name` または `displayName` を持つオブジェクトとその配列も使用できます。これらは取込処理が対応する追加形式です。
 
