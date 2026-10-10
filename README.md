@@ -2,6 +2,15 @@
 
 Kindleからエクスポートした蔵書JSONを、Android端末内で検索する個人用PWAです。
 
+## スクリーンショット
+
+スマートフォンサイズ（390 × 844px）の検索画面です。Chromeのモバイル表示で撮影し、書籍・著者はすべて架空のデータを使用しています。
+
+<p>
+  <img src="docs/screenshots/search-light.png" width="300" alt="ライトモードの蔵書検索画面。Rubyの検索結果と著者、漫画・コミックの種別を表示。">
+  <img src="docs/screenshots/search-dark.png" width="300" alt="ダークモードの蔵書検索画面。Rubyの検索結果と著者、漫画・コミックの種別を表示。">
+</p>
+
 ## 表示データ
 
 - タイトル

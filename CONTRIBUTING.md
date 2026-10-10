@@ -17,6 +17,18 @@ BROWSER_PATH=/usr/bin/google-chrome npm run test:browser
 
 テストは架空の書籍のみを生成します。ブラウザテストはプロジェクトサブパスとモバイルサイズで実施します。
 
+## README用スクリーンショット
+
+開発依存とChromeを用意した後、次のコマンドで撮影できます。
+
+```sh
+node scripts/screenshots.js
+# インストール済みChromeを使う場合
+BROWSER_PATH=/usr/bin/google-chrome node scripts/screenshots.js
+```
+
+架空の蔵書をインポートして検索し、390 × 844pxのモバイル表示をライト・ダーク両方で撮影します。画像は `docs/screenshots/` に保存します。実データは読み込まず、外部の書影も取得しません。画像・撮影スクリプトはPagesの公開対象に含まれません。
+
 ## GitHub Pages
 
 GitHubリポジトリの Settings → Pages → Build and deployment → Source を **GitHub Actions** に設定してください。
