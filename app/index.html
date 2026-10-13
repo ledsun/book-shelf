@@ -1,5 +1,26 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#284d46"><meta name="color-scheme" content="light dark"><title>BookShelf</title><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./icons/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="./style.css"><script type="module" src="./main.js"></script></head>
-<body><header><h1>BookShelf</h1><button id="settings" aria-haspopup="dialog">データ管理</button></header><main><label for="search">蔵書を検索</label><input id="search" type="search" placeholder="タイトル・著者・ASIN" autocomplete="off"><p class="hint">空白区切りでAND検索</p><p id="counts" role="status"></p><p id="message" role="status" aria-live="polite">データを読み込み中…</p><ul id="results" aria-label="検索結果"></ul><button id="more" hidden>さらに50件表示</button></main>
-<dialog id="management"><div class="dialog-head"><h2>データ管理</h2><button id="close-management" aria-label="データ管理を閉じる">閉じる</button></div><p id="summary"></p><p>JSONはこの端末内で処理・保存されます。</p><label for="file">蔵書JSONをインポート</label><input id="file" type="file" accept=".json,application/json"><p id="import-status" role="status" aria-live="polite"></p><button id="delete" class="danger">全データ削除</button><p class="hint">サイトデータの削除で蔵書は失われます。元のJSONは別途保管してください。</p></dialog>
+<body><header><h1>BookShelf</h1><button id="settings" aria-haspopup="dialog">データ管理</button></header><main><section id="welcome-guide" class="usage-guide" aria-label="はじめての使い方" hidden><button id="start-import">データ管理を開いてインポート</button></section><label for="search">蔵書を検索</label><input id="search" type="search" placeholder="タイトル・著者・ASIN" autocomplete="off"><p class="hint">空白区切りでAND検索</p><p id="counts" role="status"></p><p id="message" role="status" aria-live="polite">データを読み込み中…</p><ul id="results" aria-label="検索結果"></ul><button id="more" hidden>さらに50件表示</button></main>
+<dialog id="management"><div class="dialog-head"><h2>データ管理</h2><button id="close-management" aria-label="データ管理を閉じる">閉じる</button></div><p id="summary"></p><p>JSONはこの端末内で処理・保存されます。</p><label for="file">蔵書JSONをインポート</label><input id="file" type="file" accept=".json,application/json"><p id="import-status" role="status" aria-live="polite"></p><button id="delete" class="danger">全データ削除</button><p class="hint">サイトデータの削除で蔵書は失われます。元のJSONは別途保管してください。</p><section id="management-guide" class="usage-guide" aria-label="使い方ガイド"></section></dialog>
+<template id="usage-guide-template">
+<h2>BookShelfの使い方</h2>
+<p>Kindleの蔵書を取り込んで、タイトル・著者・ASINで検索できるアプリです。</p>
+<h3>1. 蔵書ファイルを用意する</h3>
+<ol>
+<li>PCのChromeで <a href="https://read.amazon.co.jp/" target="_blank" rel="noopener noreferrer">Kindle Cloud Reader</a> を開き、Amazonにログインします。</li>
+<li>Chromeの開発者ツールでConsoleタブを開き、<a href="https://gist.github.com/ledsun/21f83c4e48cf6fe51e4b6848e8671656" target="_blank" rel="noopener noreferrer">Kindle蔵書エクスポートツール（ExportKindle.js）</a> の内容を確認して実行します。</li>
+<li>ダウンロードされた <code>books.json</code> を、BookShelfを使う端末へ移します。</li>
+</ol>
+<h3>2. データ管理から取り込む</h3>
+<p>「データ管理」の「蔵書JSONをインポート」で <code>books.json</code> を選びます。取込冊数と、不正・重複でスキップした件数が表示されます。</p>
+<p>蔵書を更新するときは新しいJSONを取り込んでください。既存データは全件置換されます。Amazonへの直接同期は行いません。</p>
+<h3>3. 検索して本を開く</h3>
+<p>検索欄にタイトル・著者・ASINを入力します。空白で区切ると、すべての語に一致する本を探せます。一覧の本を押すと詳細が開き、漫画のシリーズでは巻を選べます。「Amazonで開く」から商品ページへ移動できます。</p>
+<details>
+<summary>ホーム画面への追加・オフライン利用・保存について</summary>
+<p>AndroidのChromeでオンライン時にBookShelfを開き、メニューから「ホーム画面に追加」または「アプリをインストール」を選ぶと、次回から起動しやすくなります。</p>
+<p>初回の準備完了後は、オフラインでも起動・検索・インポートができます。書影の表示やAmazonの商品ページには通信が必要です。</p>
+<p>JSONと蔵書はこの端末のブラウザ内に保存され、インターネット上へアップロードされません。別の端末・ブラウザでは再インポートが必要です。サイトデータを削除すると蔵書も消えるため、元のJSONは別途保管してください。</p>
+</details>
+</template>
 <dialog id="detail" aria-labelledby="detail-heading"><div class="dialog-head"><h2 id="detail-heading">書籍詳細</h2><button id="close-detail">閉じる</button></div><section id="series-detail" hidden><h3 id="series-title"></h3><p id="series-count"></p><details open><summary>巻を選択</summary><ul id="volume-list" aria-label="巻一覧"></ul></details></section><div id="cover"><img id="cover-image" alt="" crossorigin="anonymous" referrerpolicy="no-referrer" hidden><p id="cover-status" role="status"></p></div><h3 id="detail-title"></h3><dl><dt>著者</dt><dd id="detail-author"></dd><dt>ASIN</dt><dd id="detail-asin"></dd></dl><a id="amazon" target="_blank" rel="noopener noreferrer">Amazonで開く</a></dialog></body></html>
