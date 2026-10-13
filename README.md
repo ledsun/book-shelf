@@ -1,5 +1,7 @@
 # BookShelf
 
+[BookShelfを開く](https://ledsun.github.io/book-shelf/)
+
 Kindleからエクスポートした蔵書JSONを、Android端末内で検索する個人用PWAです。
 
 ## 操作デモ
