@@ -2,6 +2,9 @@ import { parseLibrary, searchBooks, amazonUrl, safeCoverUrl } from './library.js
 import { openDatabase, readLibrary, replaceLibrary } from './storage.js';
 import { libraryItems, sortVolumes, volumeLabel } from './series.js';
 const $ = id => document.getElementById(id);
+for (const id of ['welcome-guide', 'management-guide']) {
+  $(id).prepend($('usage-guide-template').content.cloneNode(true));
+}
 let db, books = [], matches = [], items = [], shown = 0, importedAt = null, busy = false, timer;
 function summary() {
   $('summary').textContent = `登録済み: ${books.length.toLocaleString()}冊 / ${items.filter(item => item.isSeries).length.toLocaleString()}シリーズ / 最終インポート: ${importedAt ? new Date(importedAt).toLocaleString('ja-JP') : '未実施'}`;
@@ -19,6 +22,7 @@ function renderMore() {
   $('more').hidden = shown >= matches.length;
 }
 function search() {
+  $('welcome-guide').hidden = books.length !== 0;
   const found = new Set(searchBooks(books, $('search').value));
   matches = items.map(item => ({ ...item, books: item.books.filter(book => found.has(book)) })).filter(item => item.books.length); shown = 0; $('results').replaceChildren();
   $('counts').textContent = `登録済み ${books.length.toLocaleString()}冊 / ${items.filter(item => item.isSeries).length.toLocaleString()}シリーズ · 検索結果 ${matches.reduce((sum, item) => sum + item.books.length, 0).toLocaleString()}冊 / ${matches.length.toLocaleString()}件`;
@@ -65,7 +69,9 @@ function showBook(book) {
   if (url) $('amazon').href = url; else $('amazon').removeAttribute('href');
 }
 function setBusy(value) { busy = value; $('file').disabled = value || !db; $('delete').disabled = value || !db; $('management').setAttribute('aria-busy', String(value)); }
-$('settings').onclick = () => { summary(); $('management').showModal(); };
+function openManagement() { summary(); $('management').showModal(); }
+$('settings').onclick = openManagement;
+$('start-import').onclick = openManagement;
 $('close-management').onclick = () => { if (!busy) $('management').close(); };
 $('management').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
 $('close-detail').onclick = () => $('detail').close();
