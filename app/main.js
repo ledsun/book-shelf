@@ -27,6 +27,12 @@ function search() {
   matches = items.map(item => ({ ...item, books: item.books.filter(book => found.has(book)) })).filter(item => item.books.length); shown = 0; $('results').replaceChildren();
   $('counts').textContent = `登録済み ${books.length.toLocaleString()}冊 / ${items.filter(item => item.isSeries).length.toLocaleString()}シリーズ · 検索結果 ${matches.reduce((sum, item) => sum + item.books.length, 0).toLocaleString()}冊 / ${matches.length.toLocaleString()}件`;
   $('message').textContent = books.length ? matches.length ? '' : '該当する書籍はありません。' : 'データ管理から蔵書JSONをインポートしてください。';
+  const empty = books.length === 0;
+  $('state-art').hidden = matches.length !== 0;
+  $('state-image').src = empty ? './images/bookrow-welcome.png' : './images/bookrow-empty.png';
+  $('state-title').hidden = !empty;
+  $('search-help').hidden = empty || matches.length !== 0;
+  $('message').classList.toggle('empty-message', !empty && matches.length === 0);
   renderMore(); summary();
 }
 function clearCover() { $('cover-image').onload = null; $('cover-image').onerror = null; $('cover-image').removeAttribute('src'); $('cover-image').hidden = true; }

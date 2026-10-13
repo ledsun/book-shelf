@@ -20,6 +20,18 @@ try{
  const root=`http://127.0.0.1:${server.address().port}/book-shelf/`;
  await page.goto(root);await page.waitForFunction(()=>document.querySelector('#message').textContent.includes('インポートしてください'));
  await page.evaluate(async()=>{await navigator.serviceWorker.ready;});
+ assert.equal(await page.locator('#state-art').isVisible(),true);
+ assert.match(await page.locator('#state-image').getAttribute('src'),/bookrow-welcome/);
+ assert.equal(await page.locator('#search-help').isVisible(),false);
+ assert.equal(await page.locator('.header-mascot').evaluate(img=>img.complete && img.naturalWidth>0),true);
+ for (const [asset, size] of [['icon-192.png',192],['icon-512.png',512],['icon-maskable-512.png',512],['apple-touch-icon.png',180],['favicon-32.png',32]]) {
+   assert.deepEqual(await page.evaluate(async src=>{const img=new Image();img.src=src;await img.decode();return [img.naturalWidth,img.naturalHeight];},`./icons/${asset}`),[size,size]);
+ }
+ for (const width of [320,390,760]) {
+   await page.setViewportSize({width,height:844});
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ }
+ await page.setViewportSize({width:390,height:844});
  assert.equal(await page.locator('#welcome-guide').isVisible(),true);
  assert.match(await page.locator('#welcome-guide').textContent(),/books.json/);
  assert.equal(await page.locator('#welcome-guide a').count(),2);
@@ -31,6 +43,7 @@ try{
  const data=Array.from({length:10000},(_,i)=>({asin:`B${String(i).padStart(9,'0')}`,title:`架空 Ruby 設計 第${i}の本`,authors:['架空 太郎'],mangaOrComicAsin:i%2===0,coverImageUrl:`https://m.media-amazon.com/images/I/${i===9998?'missing':'fiction'}._SY400_.jpg`}));
  await upload(data);await page.waitForFunction(()=>document.querySelector('#import-status').textContent.startsWith('10,000冊'));
  assert.equal(await page.locator('#results li').count(),50); assert.equal(imageRequests,0); assert.match(await page.locator('#results li').nth(0).textContent(),/漫画・コミック/); assert.match(await page.locator('#results li').nth(1).textContent(),/通常の書籍/); assert.equal((await page.locator('#results').textContent()).includes('B000000000'),false);
+ assert.equal(await page.locator('#state-art').isVisible(),false);
  await upload('{');await page.waitForFunction(()=>document.querySelector('#import-status').textContent.includes('インポート失敗'));assert.match(await page.locator('#summary').textContent(),/10,000/);
  await page.locator('#close-management').click();assert.equal(await page.locator('#welcome-guide').isVisible(),false);await page.locator('#search').fill('存在しない書籍');await page.waitForFunction(()=>document.querySelector('#message').textContent.includes('該当する書籍'));assert.equal(await page.locator('#welcome-guide').isVisible(),false);await page.locator('#search').fill('Ruby 9999');await page.waitForFunction(()=>document.querySelector('#results').children.length===1);await page.locator('#results button').click();assert.equal(await page.locator('#amazon').getAttribute('href'),'https://www.amazon.co.jp/dp/B000009999');await page.waitForFunction(()=>!document.querySelector('#cover-image').hidden); assert.equal(imageRequests,1); await page.locator('#close-detail').click();
  await page.locator('#search').fill('Ruby 9998');await page.waitForFunction(()=>document.querySelector('#results').textContent.includes('9998'));await page.locator('#results button').click();await page.waitForFunction(()=>document.querySelector('#cover-status').textContent.includes('取得できません'));assert.equal(await page.locator('#cover-image').isVisible(),false);await page.locator('#close-detail').click();
@@ -38,6 +51,13 @@ try{
  page.once('dialog',dialog=>dialog.accept());await upload([{title:'置換成功',author:'テスト'}]);await page.waitForFunction(()=>document.querySelector('#import-status').textContent.startsWith('1冊'));
  await page.locator('#close-management').click();await context.setOffline(true);await page.reload();await page.waitForFunction(()=>document.querySelector('#counts').textContent.includes('登録済み 1冊'));await page.locator('#search').fill('置換');await page.waitForFunction(()=>document.querySelector('#results').children.length===1);
  assert.match(await page.locator('#results').textContent(),/種別不明/);await page.locator('#results button').click();assert.match(await page.locator('#cover-status').textContent(),/書影情報がありません/);await page.locator('#close-detail').click();
+ await page.locator('#search').fill('オフラインでも該当なし');
+ await page.waitForFunction(()=>document.querySelector('#message').textContent.includes('該当する書籍'));
+ assert.equal(await page.locator('#state-art').isVisible(),true);
+ assert.equal(await page.locator('#search-help').isVisible(),true);
+ assert.match(await page.locator('#state-image').getAttribute('src'),/bookrow-empty/);
+ assert.equal(await page.locator('#state-image').evaluate(async img=>{await img.decode();return img.naturalWidth>0;}),true);
+ assert.equal(await page.locator('.header-mascot').evaluate(async img=>{await img.decode();return img.naturalWidth>0;}),true);
  await page.locator('#settings').click();page.once('dialog',dialog=>dialog.accept());await page.locator('#delete').click();await page.waitForFunction(()=>document.querySelector('#summary').textContent.includes('登録済み: 0冊'));
  await page.locator('#close-management').click();
  assert.equal(await page.locator('#welcome-guide').isVisible(),true);
