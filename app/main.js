@@ -20,8 +20,8 @@ function renderMore() {
     button.className = 'book-detail';
     button.append(title, author, type); button.onclick = () => showDetail(item);
     const promptButton = document.createElement('button');
-    promptButton.className = 'review-prompt'; promptButton.textContent = 'AI用プロンプト';
-    promptButton.setAttribute('aria-label', `${item.title}のAI用プロンプトを作成`);
+    promptButton.className = 'review-prompt'; promptButton.textContent = '文豪風の紹介文を作る';
+    promptButton.setAttribute('aria-label', `${item.title}の文豪風の紹介文を作る`);
     promptButton.onclick = () => {
       const { writer, text } = createReviewPrompt(item);
       $('prompt-writer').textContent = `今回の文豪：${writer}`;
