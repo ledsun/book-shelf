@@ -45,12 +45,15 @@ try{
  assert.equal(await page.locator('#results li').count(),50); assert.equal(imageRequests,0); assert.match(await page.locator('#results li').nth(0).textContent(),/漫画・コミック/); assert.match(await page.locator('#results li').nth(1).textContent(),/通常の書籍/); assert.equal((await page.locator('#results').textContent()).includes('B000000000'),false);
  assert.equal(await page.locator('#state-art').isVisible(),false);
  await upload('{');await page.waitForFunction(()=>document.querySelector('#import-status').textContent.includes('インポート失敗'));assert.match(await page.locator('#summary').textContent(),/10,000/);
- await page.locator('#close-management').click();assert.equal(await page.locator('#welcome-guide').isVisible(),false);await page.locator('#search').fill('存在しない書籍');await page.waitForFunction(()=>document.querySelector('#message').textContent.includes('該当する書籍'));assert.equal(await page.locator('#welcome-guide').isVisible(),false);await page.locator('#search').fill('Ruby 9999');await page.waitForFunction(()=>document.querySelector('#results').children.length===1);await page.locator('#results button').click();assert.equal(await page.locator('#amazon').getAttribute('href'),'https://www.amazon.co.jp/dp/B000009999');await page.waitForFunction(()=>!document.querySelector('#cover-image').hidden); assert.equal(imageRequests,1); await page.locator('#close-detail').click();
- await page.locator('#search').fill('Ruby 9998');await page.waitForFunction(()=>document.querySelector('#results').textContent.includes('9998'));await page.locator('#results button').click();await page.waitForFunction(()=>document.querySelector('#cover-status').textContent.includes('取得できません'));assert.equal(await page.locator('#cover-image').isVisible(),false);await page.locator('#close-detail').click();
+ await page.locator('#close-management').click();assert.equal(await page.locator('#welcome-guide').isVisible(),false);await page.locator('#search').fill('存在しない書籍');await page.waitForFunction(()=>document.querySelector('#message').textContent.includes('該当する書籍'));assert.equal(await page.locator('#welcome-guide').isVisible(),false);await page.locator('#search').fill('Ruby 9999');await page.waitForFunction(()=>document.querySelector('#results').children.length===1);await page.locator('#results .book-detail').click();assert.equal(await page.locator('#amazon').getAttribute('href'),'https://www.amazon.co.jp/dp/B000009999');await page.waitForFunction(()=>!document.querySelector('#cover-image').hidden); assert.equal(imageRequests,1); await page.locator('#close-detail').click();
+ await page.locator('#search').fill('Ruby 9998');await page.waitForFunction(()=>document.querySelector('#results').textContent.includes('9998'));await page.locator('#results .book-detail').click();await page.waitForFunction(()=>document.querySelector('#cover-status').textContent.includes('取得できません'));assert.equal(await page.locator('#cover-image').isVisible(),false);await page.locator('#close-detail').click();
  await page.locator('#settings').click();assert.equal(await page.locator('#management-guide').isVisible(),true);page.once('dialog',dialog=>dialog.dismiss());await upload([{title:'置換拒否'}]);await page.waitForFunction(()=>document.querySelector('#import-status').textContent.includes('キャンセル'));assert.match(await page.locator('#summary').textContent(),/10,000/);
  page.once('dialog',dialog=>dialog.accept());await upload([{title:'置換成功',author:'テスト'}]);await page.waitForFunction(()=>document.querySelector('#import-status').textContent.startsWith('1冊'));
  await page.locator('#close-management').click();await context.setOffline(true);await page.reload();await page.waitForFunction(()=>document.querySelector('#counts').textContent.includes('登録済み 1冊'));await page.locator('#search').fill('置換');await page.waitForFunction(()=>document.querySelector('#results').children.length===1);
- assert.match(await page.locator('#results').textContent(),/種別不明/);await page.locator('#results button').click();assert.match(await page.locator('#cover-status').textContent(),/書影情報がありません/);await page.locator('#close-detail').click();
+ await page.locator('#results .review-prompt').click();
+ assert.match(await page.locator('#prompt-text').inputValue(), /対象書籍名："置換成功"/);
+ await page.locator('#close-prompt').click();
+ assert.match(await page.locator('#results').textContent(),/種別不明/);await page.locator('#results .book-detail').click();assert.match(await page.locator('#cover-status').textContent(),/書影情報がありません/);await page.locator('#close-detail').click();
  await page.locator('#search').fill('オフラインでも該当なし');
  await page.waitForFunction(()=>document.querySelector('#message').textContent.includes('該当する書籍'));
  assert.equal(await page.locator('#state-art').isVisible(),true);
@@ -75,9 +78,25 @@ try{
  assert.match(await page.locator('#summary').textContent(),/7冊 \/ 2シリーズ/);
  await page.locator('#close-management').click();await page.locator('#search').fill('');
  await page.waitForFunction(()=>document.querySelector('#results').children.length===4);
+ // Prompt generation uses the series title even when search matches a single volume.
+ await page.locator('#results .review-prompt').first().click();
+ const prompt = await page.locator('#prompt-text').inputValue();
+ assert.match(prompt, /対象シリーズ名：「?"架空連作"/);
+ assert.match(await page.locator('#prompt-writer').textContent(), /横溝正史|与謝野晶子|夏目漱石/);
+ assert.equal(await page.locator('#detail').evaluate(el=>el.open), false);
+ await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {configurable:true,value:{writeText:async text=>{window.copiedPrompt=text;}}}));
+ await page.locator('#copy-prompt').click();
+ await page.waitForFunction(()=>document.querySelector('#copy-status').textContent.includes('コピーしました'));
+ assert.equal(await page.evaluate(()=>window.copiedPrompt), prompt);
+ await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {configurable:true,value:{writeText:async()=>{throw Error('denied');}}}));
+ await page.locator('#copy-prompt').click();
+ await page.waitForFunction(()=>document.querySelector('#copy-status').textContent.includes('手動でコピー'));
+ assert.equal(await page.locator('#prompt-text').evaluate(el=>el.selectionEnd-el.selectionStart), prompt.length);
+ await page.keyboard.press('Escape');
+ assert.equal(await page.locator('#review-prompt').evaluate(el=>el.open), false);
  const beforeSeries = imageRequests;
  assert.equal(await page.locator('#results li strong').first().textContent(),'架空連作');
- await page.locator('#results button').first().click();
+ await page.locator('#results .book-detail').first().click();
  await page.waitForFunction(()=>!document.querySelector('#cover-image').hidden);
  assert.equal(imageRequests,beforeSeries+1);
  assert.equal(await page.locator('#volume-list button').count(),3);
@@ -97,7 +116,7 @@ try{
  assert.equal(await page.locator('#results strong').textContent(),'架空連作');
  assert.match(await page.locator('#results').textContent(),/一致1冊 \/ 所有3冊/);
  assert.match(await page.locator('#counts').textContent(),/登録済み 7冊 \/ 2シリーズ/);
- await page.locator('#results button').click();
+ await page.locator('#results .book-detail').click();
  assert.equal(await page.locator('#volume-list button').count(),1);
  assert.match(await page.locator('#detail-title').textContent(),/12/);
  await page.locator('#close-detail').click();
@@ -105,14 +124,14 @@ try{
  await page.waitForFunction(()=>document.querySelector('#counts').textContent.includes('登録済み 7冊 / 2シリーズ'));
  assert.equal(await page.locator('#results li').count(),4);
  const beforeOffline = imageRequests;
- await page.locator('#results button').first().click();
+ await page.locator('#results .book-detail').first().click();
  assert.match(await page.locator('#cover-status').textContent(),/オフライン/);
  assert.match(await page.locator('#detail-title').textContent(),/12/);
  assert.equal(imageRequests,beforeOffline);
  await page.locator('#close-detail').click();
  // Desktop clicks inside the dialog (including padding) keep it open; backdrop clicks close it.
  await page.setViewportSize({width:1280,height:900});
- await page.locator('#results button').first().click();
+ await page.locator('#results .book-detail').first().click();
  await page.locator('#detail-title').click();
  assert.equal(await page.locator('#detail').evaluate(dialog=>dialog.open),true);
  const detailBounds = await page.locator('#detail').boundingBox();
@@ -121,7 +140,7 @@ try{
  await page.mouse.click(10,10);
  await page.waitForFunction(()=>!document.querySelector('#detail').open);
  await page.waitForFunction(()=>document.querySelector('#cover-image').getAttribute('src')===null);
- await page.locator('#results button').first().click();
+ await page.locator('#results .book-detail').first().click();
  await page.locator('#close-detail').click();
  // Saved pre-feature records remain individual until the next import.
  await page.evaluate(async()=>{
@@ -130,6 +149,6 @@ try{
  });
  await page.reload();await page.waitForFunction(()=>document.querySelector('#counts').textContent.includes('登録済み 2冊 / 0シリーズ'));
  assert.equal(await page.locator('#results li').count(),2);
- await page.locator('#results button').first().click();assert.equal(await page.locator('#series-detail').isVisible(),false);await page.locator('#close-detail').click();
+ await page.locator('#results .book-detail').first().click();assert.equal(await page.locator('#series-detail').isVisible(),false);await page.locator('#close-detail').click();
  assert.deepEqual(errors,[]);console.log('Series Browser PASS: import grouping, series totals, maximum volume, text-only volume selection, selected-cover requests, filtered details, offline metadata persistence, legacy records');console.log('Browser PASS: subpath, 10,000-book import, limited DOM, search, detail, invalid JSON protection, replacement cancel/accept, offline reload/search, deletion');
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

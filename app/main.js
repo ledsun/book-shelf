@@ -1,3 +1,4 @@
+import { createReviewPrompt } from './review-prompt.js';
 import { parseLibrary, searchBooks, amazonUrl, safeCoverUrl } from './library.js';
 import { openDatabase, readLibrary, replaceLibrary } from './storage.js';
 import { libraryItems, sortVolumes, volumeLabel } from './series.js';
@@ -16,7 +17,18 @@ function renderMore() {
     const title = document.createElement('strong'), author = document.createElement('span'), type = document.createElement('small');
     const book = item.books[0];
     title.textContent = item.title; author.textContent = item.author || '著者情報なし'; type.textContent = item.isSeries ? `漫画・コミック · 一致${item.books.length}冊 / 所有${item.total}冊` : book.mangaOrComic === true ? '漫画・コミック' : book.mangaOrComic === false ? '通常の書籍' : '種別不明';
-    button.append(title, author, type); button.onclick = () => showDetail(item); li.append(button); fragment.append(li);
+    button.className = 'book-detail';
+    button.append(title, author, type); button.onclick = () => showDetail(item);
+    const promptButton = document.createElement('button');
+    promptButton.className = 'review-prompt'; promptButton.textContent = 'AI用プロンプト';
+    promptButton.setAttribute('aria-label', `${item.title}のAI用プロンプトを作成`);
+    promptButton.onclick = () => {
+      const { writer, text } = createReviewPrompt(item);
+      $('prompt-writer').textContent = `今回の文豪：${writer}`;
+      $('prompt-text').value = text; $('copy-status').textContent = '';
+      $('review-prompt').showModal();
+    };
+    li.append(button, promptButton); fragment.append(li);
   }
   shown = Math.min(shown + 50, matches.length); $('results').append(fragment);
   $('more').hidden = shown >= matches.length;
@@ -81,11 +93,22 @@ $('start-import').onclick = openManagement;
 $('close-management').onclick = () => { if (!busy) $('management').close(); };
 $('management').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
 $('close-detail').onclick = () => $('detail').close();
-$('detail').addEventListener('click', event => {
-  if (event.target !== $('detail')) return;
-  const bounds = $('detail').getBoundingClientRect();
+$('close-prompt').onclick = () => $('review-prompt').close();
+$('copy-prompt').onclick = async () => {
+  const text = $('prompt-text').value;
+  try {
+    await navigator.clipboard.writeText(text);
+    $('copy-status').textContent = 'コピーしました。ChatAIアプリに貼り付けてください。';
+  } catch {
+    $('prompt-text').focus(); $('prompt-text').select();
+    $('copy-status').textContent = '自動コピーできませんでした。選択されたプロンプトを手動でコピーしてください。';
+  }
+};
+for (const id of ['detail', 'review-prompt']) $(id).addEventListener('click', event => {
+  if (event.target !== $(id)) return;
+  const bounds = $(id).getBoundingClientRect();
   if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) {
-    $('detail').close();
+    $(id).close();
   }
 });
 $('more').onclick = renderMore;

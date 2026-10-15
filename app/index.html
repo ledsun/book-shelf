@@ -15,7 +15,7 @@
 <p>「データ管理」の「蔵書JSONをインポート」で <code>books.json</code> を選びます。取込冊数と、不正・重複でスキップした件数が表示されます。</p>
 <p>蔵書を更新するときは新しいJSONを取り込んでください。既存データは全件置換されます。Amazonへの直接同期は行いません。</p>
 <h3>3. 検索して本を開く</h3>
-<p>検索欄にタイトル・著者・ASINを入力します。空白で区切ると、すべての語に一致する本を探せます。一覧の本を押すと詳細が開き、漫画のシリーズでは巻を選べます。「Amazonで開く」から商品ページへ移動できます。</p>
+<p>検索欄にタイトル・著者・ASINを入力します。空白で区切ると、すべての語に一致する本を探せます。一覧の本を押すと詳細が開き、漫画のシリーズでは巻を選べます。「Amazonで開く」から商品ページへ移動できます。一覧の「AI用プロンプト」では、レビューを検索してランダムな文豪風にまとめる指示をコピーし、ChatAIアプリに貼り付けられます。</p>
 <details>
 <summary>ホーム画面への追加・オフライン利用・保存について</summary>
 <p>AndroidのChromeでオンライン時にBookShelfを開き、メニューから「ホーム画面に追加」または「アプリをインストール」を選ぶと、次回から起動しやすくなります。</p>
@@ -23,4 +23,4 @@
 <p>JSONと蔵書はこの端末のブラウザ内に保存され、インターネット上へアップロードされません。別の端末・ブラウザでは再インポートが必要です。サイトデータを削除すると蔵書も消えるため、元のJSONは別途保管してください。</p>
 </details>
 </template>
-<dialog id="detail" aria-labelledby="detail-heading"><div class="dialog-head"><h2 id="detail-heading">書籍詳細</h2><button id="close-detail">閉じる</button></div><section id="series-detail" hidden><h3 id="series-title"></h3><p id="series-count"></p><details open><summary>巻を選択</summary><ul id="volume-list" aria-label="巻一覧"></ul></details></section><div id="cover"><img id="cover-image" alt="" crossorigin="anonymous" referrerpolicy="no-referrer" hidden><p id="cover-status" role="status"></p></div><h3 id="detail-title"></h3><dl><dt>著者</dt><dd id="detail-author"></dd><dt>ASIN</dt><dd id="detail-asin"></dd></dl><a id="amazon" target="_blank" rel="noopener noreferrer">Amazonで開く</a></dialog></body></html>
+<dialog id="detail" aria-labelledby="detail-heading"><div class="dialog-head"><h2 id="detail-heading">書籍詳細</h2><button id="close-detail">閉じる</button></div><section id="series-detail" hidden><h3 id="series-title"></h3><p id="series-count"></p><details open><summary>巻を選択</summary><ul id="volume-list" aria-label="巻一覧"></ul></details></section><div id="cover"><img id="cover-image" alt="" crossorigin="anonymous" referrerpolicy="no-referrer" hidden><p id="cover-status" role="status"></p></div><h3 id="detail-title"></h3><dl><dt>著者</dt><dd id="detail-author"></dd><dt>ASIN</dt><dd id="detail-asin"></dd></dl><a id="amazon" target="_blank" rel="noopener noreferrer">Amazonで開く</a></dialog><dialog id="review-prompt" aria-labelledby="prompt-heading"><div class="dialog-head"><h2 id="prompt-heading">AI用プロンプト</h2><button id="close-prompt">閉じる</button></div><p id="prompt-writer"></p><p class="hint">プロンプトをコピーして、検索機能のあるChatAIアプリに貼り付けてください。文豪は開くたびにランダムに選ばれます。</p><label for="prompt-text">レビュー検索・要約の指示</label><textarea id="prompt-text" readonly rows="14"></textarea><button id="copy-prompt">プロンプトをコピー</button><p id="copy-status" role="status" aria-live="polite"></p></dialog></body></html>
