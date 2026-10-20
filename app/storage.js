@@ -12,14 +12,16 @@ export function openDatabase() {
 }
 export function readLibrary(db) {
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(['books', 'meta'], 'readonly');
+    const tx = db.transaction(['books', 'meta'], 'readwrite');
+    // Clean up metadata from the removed Google Drive integration.
+    tx.objectStore('meta').delete('driveFile');
     const books = tx.objectStore('books').getAll();
     const date = tx.objectStore('meta').get('importedAt');
     tx.oncomplete = () => resolve({ books: books.result, importedAt: date.result || null });
     tx.onabort = () => reject(tx.error);
   });
 }
-export function replaceLibrary(db, books, importedAt = new Date().toISOString(), driveFile = null) {
+export function replaceLibrary(db, books, importedAt = new Date().toISOString()) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(['books', 'meta'], 'readwrite');
     tx.oncomplete = resolve;
@@ -31,24 +33,6 @@ export function replaceLibrary(db, books, importedAt = new Date().toISOString(),
       const meta = tx.objectStore('meta');
       meta.clear();
       if (importedAt) meta.put(importedAt, 'importedAt');
-      if (driveFile) meta.put({ id: driveFile.id, name: driveFile.name }, 'driveFile');
     } catch (error) { tx.abort(); reject(error); }
-  });
-}
-
-export function readDriveSource(db) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('meta', 'readonly');
-    const request = tx.objectStore('meta').get('driveFile');
-    tx.oncomplete = () => resolve(request.result || null);
-    tx.onabort = () => reject(tx.error);
-  });
-}
-export function forgetDriveSource(db) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('meta', 'readwrite');
-    tx.objectStore('meta').delete('driveFile');
-    tx.oncomplete = resolve;
-    tx.onabort = () => reject(tx.error);
   });
 }

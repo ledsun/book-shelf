@@ -15,7 +15,16 @@ test('IndexedDB全件置換・失敗時の既存データ保護・削除',async(
  const db=await openDatabase(); const initial=parse(data).books;
  await replaceLibrary(db,initial,'2026-01-01T00:00:00Z');
  await replaceLibrary(db,[initial[0]],'2026-02-01T00:00:00Z');
+ await new Promise((resolve,reject)=>{
+   const tx=db.transaction('meta','readwrite');
+   tx.objectStore('meta').put({id:'old-drive-file',name:'books.json'},'driveFile');
+   tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);
+ });
  assert.equal((await readLibrary(db)).books.length,1);
+ assert.equal(await new Promise((resolve,reject)=>{
+   const tx=db.transaction('meta','readonly');const request=tx.objectStore('meta').get('driveFile');
+   tx.oncomplete=()=>resolve(request.result);tx.onabort=()=>reject(tx.error);
+ }),undefined);
  await assert.rejects(replaceLibrary(db,[initial[1],initial[1]]));
  assert.deepEqual((await readLibrary(db)).books,[initial[0]]);
  assert.equal((await readLibrary(db)).importedAt,'2026-02-01T00:00:00Z');
