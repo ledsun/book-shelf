@@ -3,7 +3,8 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const types={html:'text/html',js:'text/javascript',css:'text/css',webmanifest:'application/manifest+json',png:'image/png',svg:'image/svg+xml'};
-const server=createServer(async(req,res)=>{try{const path=new URL(req.url,'http://localhost').pathname;if(!path.startsWith('/book-shelf/'))throw Error();const file=path.slice('/book-shelf/'.length)||'index.html';if(file.includes('..'))throw Error();res.setHeader('Content-Type',types[file.split('.').pop()]||'application/octet-stream');res.end(await readFile(new URL('../app/'+file,import.meta.url)));}catch{res.writeHead(404);res.end();}});
+let postedToServer = 0;
+const server=createServer(async(req,res)=>{if(req.method==='POST')postedToServer++;try{const path=new URL(req.url,'http://localhost').pathname;if(!path.startsWith('/book-shelf/'))throw Error();const file=path.slice('/book-shelf/'.length)||'index.html';if(file.includes('..'))throw Error();res.setHeader('Content-Type',types[file.split('.').pop()]||'application/octet-stream');res.end(await readFile(new URL('../app/'+file,import.meta.url)));}catch{res.writeHead(404);res.end();}});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 let browser;
 try{
@@ -150,5 +151,54 @@ try{
  await page.reload();await page.waitForFunction(()=>document.querySelector('#counts').textContent.includes('登録済み 2冊 / 0シリーズ'));
  assert.equal(await page.locator('#results li').count(),2);
  await page.locator('#results .book-detail').first().click();assert.equal(await page.locator('#series-detail').isVisible(),false);await page.locator('#close-detail').click();
+ // Exercise actual multipart navigation intercepted by the service worker.
+ const manifest = await (await page.request.get(root+'manifest.webmanifest')).json();
+ assert.equal(manifest.share_target.action, './share-target');
+ assert.equal(manifest.share_target.method, 'POST');
+ await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+ const share = async (files) => {
+   await Promise.all([
+     page.waitForNavigation({waitUntil:'load'}),
+     page.evaluate(files => {
+       const form = document.createElement('form');
+       form.method = 'POST'; form.enctype = 'multipart/form-data'; form.action = './share-target';
+       const input = document.createElement('input'); input.type = 'file'; input.name = 'books'; input.multiple = true;
+       const transfer = new DataTransfer();
+       for (const file of files) transfer.items.add(new File([file.text], file.name, {type:'application/json'}));
+       input.files = transfer.files; form.append(input); document.body.append(form); form.submit();
+     }, files)
+   ]);
+   await page.waitForFunction(() => document.querySelector('#management').open);
+ };
+ await context.setOffline(true);
+ await share([{name:'共有.json',text:JSON.stringify([{title:'架空共有蔵書'}])}]);
+ await page.waitForSelector('#shared-file:not([hidden])');
+ assert.equal(await page.locator('#shared-name').textContent(),'共有.json');
+ assert.match(await page.locator('#summary').textContent(),/登録済み: 2冊/);
+ assert.equal(new URL(page.url()).searchParams.has('share'),false);
+ page.once('dialog', dialog=>dialog.dismiss());
+ await page.locator('#import-shared').click();
+ await page.waitForFunction(()=>document.querySelector('#import-status').textContent.includes('キャンセル'));
+ assert.match(await page.locator('#summary').textContent(),/登録済み: 2冊/);
+ page.once('dialog', dialog=>dialog.accept());
+ await page.locator('#import-shared').click();
+ await page.waitForFunction(()=>document.querySelector('#import-status').textContent.startsWith('1冊'));
+ assert.equal(await page.locator('#shared-file').isVisible(),false);
+ await share([{name:'不正.json',text:'{'}]);
+ await page.locator('#import-shared').click();
+ await page.waitForFunction(()=>document.querySelector('#import-status').textContent.includes('インポート失敗'));
+ assert.match(await page.locator('#summary').textContent(),/登録済み: 1冊/);
+ await page.locator('#discard-shared').click();
+ await page.waitForFunction(()=>document.querySelector('#shared-file').hidden);
+ await share([{name:'a.json',text:'[]'},{name:'b.json',text:'[]'}]);
+ await page.waitForFunction(()=>document.querySelector('#import-status').textContent.includes('1つ共有'));
+ assert.match(await page.locator('#summary').textContent(),/登録済み: 1冊/);
+ await share([]);
+ await page.waitForFunction(()=>document.querySelector('#import-status').textContent.includes('リンクの共有'));
+ assert.equal(postedToServer,0);
+ await page.reload();
+ await page.waitForFunction(()=>document.querySelector('#counts').textContent.includes('登録済み 1冊'));
+ assert.equal(await page.locator('#shared-file').isVisible(),false);
+ console.log('Share Browser PASS: real multipart POST, subpath redirect, offline reception, explicit import, replacement cancellation, invalid JSON, discard, multiple/missing files, no server upload');
  assert.deepEqual(errors,[]);console.log('Series Browser PASS: import grouping, series totals, maximum volume, text-only volume selection, selected-cover requests, filtered details, offline metadata persistence, legacy records');console.log('Browser PASS: subpath, 10,000-book import, limited DOM, search, detail, invalid JSON protection, replacement cancel/accept, offline reload/search, deletion');
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
