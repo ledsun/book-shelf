@@ -129,7 +129,7 @@ Google Cloudの設定がない場合も、従来のファイル選択・オフ�
 1. Google Cloudでプロジェクトを作成し、Google Drive APIとGoogle Picker APIを有効にする。
 2. Google Auth Platformで同意画面を設定し、スコープ `https://www.googleapis.com/auth/drive.file` を追加する。テスト公開の場合は利用するGoogleアカウントをテストユーザーに追加する。
 3. OAuthクライアントの「承認済みのJavaScript生成元」に `https://ledsun.github.io` を登録する。ローカル確認用には `http://localhost:8000` も登録する。パスは含めない。
-4. APIキーはウェブサイトのHTTPリファラーで `https://ledsun.github.io/*` に制限し、API制限をGoogle Picker APIに限定する。ローカル確認が必要なら `http://localhost:8000/*` も追加する。
+4. APIキーはウェブサイトのHTTPリファラーで `https://ledsun.github.io/*` と `https://docs.google.com/*` に制限し、API制限をGoogle Picker APIに限定する。ローカル確認が必要なら `http://localhost:8000/*` も追加する。
 5. 上記3値を設定してデプロイする。設定変更時もService WorkerのCACHEバージョンを更新する。
 
 更新のたびにGoogle Identity Servicesのトークン方式で `prompt: 'consent select_account'` を要求します。Googleのログイン状態はGoogle側で管理され、パスワードの再入力を保証するものではありません。リフレッシュトークンは取得しません。アクセストークンは操作中のメモリのみで使用し、アプリの永続ストレージ・URL・ログには保存しません。Google Pickerは選択終了後に破棄します。トークンの参照の破棄はGoogle側での失効とは異なり、有効期限まではトークン自体は有効です。

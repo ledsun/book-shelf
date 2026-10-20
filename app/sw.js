@@ -1,5 +1,5 @@
 const PREFIX = `bookshelf-shell-${self.registration.scope}-`;
-const CACHE = `${PREFIX}v19`;
+const CACHE = `${PREFIX}v20`;
 const ASSETS = ['./', './index.html', './style.css', './main.js', './drive.js', './drive-config.js', './library.js', './series.js', './review-prompt.js', './storage.js', './manifest.webmanifest', './icons/favicon-32.png', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './images/bookrow.png', './images/bookrow-welcome.png', './images/bookrow-empty.png'];
 const urls = new Set(ASSETS.map(path => new URL(path, self.registration.scope).href));
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS))); });
