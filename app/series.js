@@ -58,6 +58,47 @@ export function deriveSeries(title) {
   const seriesKey = seriesComparisonKey(seriesTitle);
   return { seriesKey, seriesTitle: displayTitle(title, seriesKey, seriesTitle), volume: match ? volumeNumber(match[0]) : null };
 }
+function subtitleIdentity(book) {
+  if (!Number.isFinite(book.volume)) return null;
+  const clean = value => normalize(value).replace(bonus, '').trim().replace(/(?:\s+\([^()]*\))+$/u, '').trim();
+  const text = clean(book.title), title = clean(book.seriesTitle);
+  let prefix = '', end = null;
+  for (const character of text) {
+    prefix += character;
+    if (seriesComparisonKey(prefix) === book.seriesKey) { end = prefix.length; break; }
+  }
+  if (end === null) return null;
+  const remainder = text.slice(end).trim(), marker = remainder.match(/^(\d+)(?=\s|$)/u);
+  if (!marker || Number(marker[1]) !== book.volume) return null;
+  const subtitle = remainder.slice(marker[0].length).trim();
+  if (subtitle) return { main: book.seriesKey, subtitle: seriesComparisonKey(subtitle), kind: 'middle' };
+  const match = title.match(/^(.+?)[〜～~](.+)[〜～~]$/u);
+  return match ? { main: seriesComparisonKey(match[1]), subtitle: seriesComparisonKey(match[2]), kind: 'end' } : null;
+}
+// Reconcile only complete, unambiguous groups; a shared prefix alone is insufficient.
+export function reconcileSeries(books) {
+  const groups = new Map(), identities = new Map();
+  for (const book of books) {
+    if (book.mangaOrComic !== true || !book.seriesKey) continue;
+    if (!groups.has(book.seriesKey)) groups.set(book.seriesKey, []);
+    groups.get(book.seriesKey).push(book);
+    const identity = subtitleIdentity(book);
+    if (!identity) continue;
+    if (!identities.has(identity.main)) identities.set(identity.main, []);
+    identities.get(identity.main).push({ book, ...identity });
+  }
+  for (const [main, matches] of identities) {
+    if (new Set(matches.map(match => match.subtitle)).size !== 1) continue;
+    if (new Set(matches.map(match => match.kind)).size !== 2) continue;
+    const keys = new Set(matches.map(match => match.book.seriesKey));
+    if (keys.size !== 2 || !keys.has(main)) continue;
+    const matched = new Set(matches.map(match => match.book));
+    if ([...keys].some(key => groups.get(key).some(book => !matched.has(book)))) continue;
+    const title = groups.get(main)[0].seriesTitle;
+    for (const { book } of matches) { book.seriesKey = main; book.seriesTitle = title; }
+  }
+  return books;
+}
 export function libraryItems(books) {
   const grouped = new Map(), items = [];
   for (const book of books) {

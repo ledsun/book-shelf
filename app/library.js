@@ -1,4 +1,4 @@
-import { deriveSeries } from './series.js';
+import { deriveSeries, reconcileSeries } from './series.js';
 export function fold(value) { return value.normalize('NFKC').toLocaleLowerCase('ja'); }
 function first(record, keys) { return keys.map(k => record[k]).find(v => typeof v === 'string' && v.trim())?.trim() || ''; }
 export function parseLibrary(text) {
@@ -22,7 +22,7 @@ export function parseLibrary(text) {
     books.push({ ...series, mangaOrComic: typeof record.mangaOrComicAsin === 'boolean' ? record.mangaOrComicAsin : null, coverUrl, id: books.length + 1, title, author, asin, search: fold([title, author, asin].join('\n')) });
   }
   if (!books.length) throw new Error('取り込める書籍がありません。既存データは変更していません。');
-  return { books, skipped, duplicates, total: records.length };
+  return { books: reconcileSeries(books), skipped, duplicates, total: records.length };
 }
 export function searchBooks(books, query) {
   const words = fold(query.trim()).split(/\s+/u).filter(Boolean);

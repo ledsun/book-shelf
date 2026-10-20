@@ -110,3 +110,36 @@ test('巻数不明は末尾にタイトル順、全冊不明なら先頭を選�
   assert.deepEqual(sortVolumes(books).map(book => book.id), [4, 3, 2, 1]);
   assert.deepEqual(sortVolumes(books.slice(0, 2)).map(book => book.id), [2, 1]);
 });
+
+test('巻数の前後に移動した副題が一致するグループを取り込み時に統合する', () => {
+  const titles = ['架空譚 ９ レベル１からの旅 (旧コミックス) (Japanese Edition)', '架空譚～レベル1からの旅～ 10 (新コミックス) (Japanese Edition)', '架空譚〜レベル１からの旅〜 11【特典付き】 (新コミックス)'];
+  const records = titles.map((title, i) => ({ title, mangaOrComicAsin: true, authors: [i ? '架空著者・作画' : '架空 著者'] }));
+  for (const input of [records, [...records].reverse()]) {
+    const books = parseLibrary(JSON.stringify(input)).books, items = libraryItems(books);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].title, '架空譚');
+    assert.deepEqual(sortVolumes(books).map(book => book.volume), [11, 10, 9]);
+    assert.deepEqual(sortVolumes(books).map(volumeLabel), ['11', '10', '9']);
+    assert.deepEqual(books.map(book => book.title), input.map(book => book.title));
+    assert.equal(searchBooks(books, 'レベル').length, 3);
+  }
+});
+
+test('副題・主題の相違や情報不足があるグループは統合しない', () => {
+  for (const other of ['架空譚～月の旅～ 10', '架空譚 外伝～太陽の旅～ 10', '架空譚II～太陽の旅～ 10', '架空譚～太陽の旅～ 特別編']) {
+    assert.equal(libraryItems(parse(['架空譚 9 太陽の旅', other])).length, 2);
+  }
+  assert.equal(libraryItems(parse(['架空譚 9', '架空譚～太陽の旅～ 10'])).length, 2);
+  const regular = parseLibrary(JSON.stringify([{ title: '架空譚～太陽の旅～ 10', mangaOrComicAsin: false }])).books;
+  assert.equal(libraryItems([...parse(['架空譚 9 太陽の旅']), ...regular]).length, 2);
+});
+
+test('同じ主題に複数副題や判定不能巻があれば既存グループを統合しない', () => {
+  for (const extra of ['架空譚 2 月の旅', '架空譚', '架空譚～太陽の旅～']) {
+    const titles = ['架空譚 1 太陽の旅', '架空譚～太陽の旅～ 3', extra];
+    for (const input of [titles, [...titles].reverse()]) {
+      const books = parse(input);
+      assert.deepEqual(books.map(book => book.seriesKey), input.map(title => deriveSeries(title).seriesKey));
+    }
+  }
+});
