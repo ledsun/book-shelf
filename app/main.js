@@ -155,10 +155,29 @@ $('file').onchange = async () => {
 async function importDrive(previous) {
   if (busy || !db || !driveReady) return;
   setBusy(true); $('import-status').textContent = 'Googleの認可後にファイルを取得します…';
+  let restorePickerView;
   try {
     const result = await readDriveFile(driveConfig, previous, {
-      beforePick: () => $('management').close(),
-      afterPick: () => $('management').showModal()
+      beforePick: () => {
+        const x = window.scrollX, y = window.scrollY;
+        const dialogScroll = $('management').scrollTop;
+        const bodyStyle = document.body.getAttribute('style');
+        $('management').close();
+        // Picker focuses an iframe appended to the document. Keep its focus
+        // changes from scrolling the library behind the picker, including errors.
+        Object.assign(document.body.style, {
+          position: 'fixed', top: `${-y}px`, left: `${-x}px`, width: '100%'
+        });
+        restorePickerView = () => {
+          if (bodyStyle === null) document.body.removeAttribute('style');
+          else document.body.setAttribute('style', bodyStyle);
+          $('management').showModal();
+          $('management').scrollTop = dialogScroll;
+          window.scrollTo(x, y);
+          restorePickerView = null;
+        };
+      },
+      afterPick: () => restorePickerView?.()
     });
     if (result) await importText(result.text, result.file);
     else $('import-status').textContent = 'インポートをキャンセルしました。';

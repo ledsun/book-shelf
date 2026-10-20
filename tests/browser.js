@@ -160,7 +160,15 @@ try{
      addView() { return this; } setOAuthToken() { return this; } setDeveloperKey() { return this; }
      setAppId() { return this; } setOrigin() { return this; } setLocale() { return this; }
      setCallback(callback) { this.callback = callback; return this; }
-     build() { window.pickerCalls++; return { setVisible: visible => { if (visible) setTimeout(() => this.callback(window.driveMode === 'cancel' ? { action: 'cancel' } : { action: 'picked', docs: [{ id: 'fiction-file', name: 'fiction.json' }] }), 0); }, dispose() {} }; }
+     build() { window.pickerCalls++; return { setVisible: visible => {
+       if (visible && window.driveMode === 'error-frame') {
+         const error = document.createElement('button');
+         error.textContent = 'API developer key is invalid'; error.id = 'mock-picker-error';
+         error.style.marginTop = '3000px'; document.body.append(error); error.focus();
+         window.closeMockPicker = () => { error.remove(); this.callback({action:'cancel'}); };
+         return;
+       }
+       if (visible) setTimeout(() => this.callback(window.driveMode === 'cancel' ? { action: 'cancel' } : { action: 'picked', docs: [{ id: 'fiction-file', name: 'fiction.json' }] }), 0); }, dispose() {} }; }
    }
    window.google = { accounts: { oauth2: {
      hasGrantedAllScopes: () => true,
@@ -203,6 +211,24 @@ try{
  await drivePage.locator('#drive-select').click();
  await drivePage.waitForFunction(() => document.querySelector('#import-status').textContent.includes('キャンセル'));
  assert.equal(await drivePage.locator('#management').evaluate(dialog => dialog.open), true);
+ // Desktop: an error iframe can focus content at the bottom of a long page.
+ await drivePage.setViewportSize({width:1280,height:900});
+ await drivePage.evaluate(() => {
+   const spacer = document.createElement('div'); spacer.style.height = '2000px';
+   document.querySelector('main').append(spacer);
+   window.scrollTo(0, 240); document.querySelector('#management').scrollTop = 180;
+   window.driveMode = 'error-frame';
+ });
+ const bodyStyleBeforePicker = await drivePage.evaluate(() => document.body.getAttribute('style'));
+ const scrollBeforePicker = await drivePage.evaluate(() => window.scrollY);
+ await drivePage.locator('#drive-select').click();
+ await drivePage.waitForSelector('#mock-picker-error');
+ assert.equal(await drivePage.evaluate(() => document.body.style.position), 'fixed');
+ assert.equal(await drivePage.evaluate(() => document.body.getBoundingClientRect().top), -scrollBeforePicker);
+ await drivePage.evaluate(() => closeMockPicker());
+ await drivePage.waitForFunction(() => document.querySelector('#management').open);
+ assert.equal(await drivePage.evaluate(() => window.scrollY), scrollBeforePicker);
+ assert.equal(await drivePage.evaluate(() => document.body.getAttribute('style')), bodyStyleBeforePicker);
  await drivePage.locator('#drive-forget').click();
  await drivePage.waitForFunction(() => document.querySelector('#drive-update').hidden);
  assert.match(await drivePage.locator('#summary').textContent(), /登録済み: 1冊/);
