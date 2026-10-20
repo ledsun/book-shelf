@@ -1,11 +1,15 @@
+import { driveConfig } from './drive-config.js';
+import { prepareDrive, readDriveFile } from './drive.js';
 import { createReviewPrompt } from './review-prompt.js';
 import { parseLibrary, searchBooks, amazonUrl, safeCoverUrl } from './library.js';
-import { openDatabase, readLibrary, replaceLibrary } from './storage.js';
+import { openDatabase, readLibrary, replaceLibrary, readDriveSource, forgetDriveSource } from './storage.js';
 import { libraryItems, sortVolumes, volumeLabel } from './series.js';
 const $ = id => document.getElementById(id);
 for (const id of ['welcome-guide', 'management-guide']) {
   $(id).prepend($('usage-guide-template').content.cloneNode(true));
 }
+let driveFile = null, driveReady = false;
+const driveConfigured = Boolean(driveConfig.clientId && driveConfig.apiKey && driveConfig.appId);
 let db, books = [], matches = [], items = [], shown = 0, importedAt = null, busy = false, timer;
 function summary() {
   $('summary').textContent = `登録済み: ${books.length.toLocaleString()}冊 / ${items.filter(item => item.isSeries).length.toLocaleString()}シリーズ / 最終インポート: ${importedAt ? new Date(importedAt).toLocaleString('ja-JP') : '未実施'}`;
@@ -86,8 +90,24 @@ function showBook(book) {
   const url = amazonUrl(book.asin); $('amazon').hidden = !url;
   if (url) $('amazon').href = url; else $('amazon').removeAttribute('href');
 }
-function setBusy(value) { busy = value; $('file').disabled = value || !db; $('delete').disabled = value || !db; $('management').setAttribute('aria-busy', String(value)); }
-function openManagement() { summary(); $('management').showModal(); }
+function setBusy(value) { busy = value; $('file').disabled = value || !db; $('delete').disabled = value || !db; $('management').setAttribute('aria-busy', String(value)); updateDriveControls(); }
+function updateDriveControls() {
+  $('drive-select').disabled = busy || !db || !driveReady;
+  $('drive-update').disabled = busy || !db || !driveReady || !driveFile;
+  $('drive-forget').disabled = busy || !db || !driveFile;
+  $('drive-update').hidden = $('drive-forget').hidden = !driveFile;
+  $('drive-source').textContent = driveFile ? `前回のファイル：${driveFile.name}` : '';
+}
+function openManagement() {
+  summary(); $('management').showModal();
+  if (driveConfigured && !driveReady) {
+    $('drive-status').textContent = 'Googleドライブを準備しています…';
+    prepareDrive().then(() => {
+      driveReady = true; $('drive-status').textContent = ''; updateDriveControls();
+    }).catch(error => { $('drive-status').textContent = error.message; });
+  }
+}
+$('drive-status').textContent = driveConfigured ? '' : 'Googleドライブ連携は未設定です。ファイル選択画面からドライブを利用できます。';
 $('settings').onclick = openManagement;
 $('start-import').onclick = openManagement;
 $('close-management').onclick = () => { if (!busy) $('management').close(); };
@@ -113,29 +133,55 @@ for (const id of ['detail', 'review-prompt']) $(id).addEventListener('click', ev
 });
 $('more').onclick = renderMore;
 $('search').oninput = () => { clearTimeout(timer); timer = setTimeout(search, 120); };
+async function importText(text, source = null) {
+  const result = parseLibrary(text);
+  if (books.length && !confirm(`既存の${books.length}冊を${result.books.length}冊で全件置換しますか？`)) {
+    $('import-status').textContent = 'インポートをキャンセルしました。'; return;
+  }
+  const date = new Date().toISOString();
+  $('import-status').textContent = 'インポート中…端末に保存しています。';
+  await replaceLibrary(db, result.books, date, source);
+  driveFile = source;
+  books = result.books; items = libraryItems(books); importedAt = date; search();
+  $('import-status').textContent = `${books.length.toLocaleString()}冊を取り込みました（入力${result.total}件、不正${result.skipped}件、重複${result.duplicates}件をスキップ）。`;
+}
 $('file').onchange = async () => {
   const file = $('file').files[0]; if (!file || busy || !db) return;
   setBusy(true); $('import-status').textContent = 'インポート中…ファイルを確認しています。';
-  try {
-    await new Promise(resolve => setTimeout(resolve, 30));
-    const result = parseLibrary(await file.text());
-    if (books.length && !confirm(`既存の${books.length}冊を${result.books.length}冊で全件置換しますか？`)) { $('import-status').textContent = 'インポートをキャンセルしました。'; return; }
-    const date = new Date().toISOString();
-    $('import-status').textContent = 'インポート中…端末に保存しています。';
-    await replaceLibrary(db, result.books, date);
-    books = result.books; items = libraryItems(books); importedAt = date; search();
-    $('import-status').textContent = `${books.length.toLocaleString()}冊を取り込みました（入力${result.total}件、不正${result.skipped}件、重複${result.duplicates}件をスキップ）。`;
-  } catch (error) { $('import-status').textContent = `インポート失敗: ${error.message} 既存データは保持されています。`; }
+  try { await importText(await file.text()); }
+  catch (error) { $('import-status').textContent = `インポート失敗: ${error.message} 既存データは保持されています。`; }
   finally { $('file').value = ''; setBusy(false); }
+};
+async function importDrive(previous) {
+  if (busy || !db || !driveReady) return;
+  setBusy(true); $('import-status').textContent = 'Googleの認可後にファイルを取得します…';
+  try {
+    const result = await readDriveFile(driveConfig, previous, {
+      beforePick: () => $('management').close(),
+      afterPick: () => $('management').showModal()
+    });
+    if (result) await importText(result.text, result.file);
+    else $('import-status').textContent = 'インポートをキャンセルしました。';
+  } catch (error) { $('import-status').textContent = `インポート失敗: ${error.message} 既存データは保持されています。`; }
+  finally { setBusy(false); }
+}
+$('drive-select').onclick = () => importDrive(null);
+$('drive-update').onclick = () => importDrive(driveFile);
+$('drive-forget').onclick = async () => {
+  if (busy || !db) return;
+  setBusy(true);
+  try { await forgetDriveSource(db); driveFile = null; $('import-status').textContent = '前回のファイルを忘れました。'; }
+  catch { $('import-status').textContent = '前回のファイル情報を削除できませんでした。'; }
+  finally { setBusy(false); }
 };
 $('delete').onclick = async () => {
   if (busy || !db || !confirm('端末内の全蔵書データを削除しますか？')) return;
   setBusy(true);
-  try { await replaceLibrary(db, [], null); books = []; items = []; importedAt = null; search(); $('import-status').textContent = '全データを削除しました。'; }
+  try { await replaceLibrary(db, [], null); books = []; items = []; importedAt = null; driveFile = null; search(); $('import-status').textContent = '全データを削除しました。'; }
   catch (error) { $('import-status').textContent = `削除失敗: ${error.message}`; }
   finally { setBusy(false); }
 };
 setBusy(false);
-try { db = await openDatabase(); ({ books, importedAt } = await readLibrary(db)); items = libraryItems(books); search(); setBusy(false); }
+try { db = await openDatabase(); ({ books, importedAt } = await readLibrary(db)); driveFile = await readDriveSource(db); items = libraryItems(books); search(); setBusy(false); }
 catch (error) { $('message').textContent = `保存領域を開けません: ${error.message} ブラウザ設定を確認して再読み込みしてください。`; }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => { $('message').textContent += ' オフライン準備に失敗しました。オンラインで再読み込みしてください。'; });

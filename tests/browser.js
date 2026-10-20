@@ -150,5 +150,64 @@ try{
  await page.reload();await page.waitForFunction(()=>document.querySelector('#counts').textContent.includes('登録済み 2冊 / 0シリーズ'));
  assert.equal(await page.locator('#results li').count(),2);
  await page.locator('#results .book-detail').first().click();assert.equal(await page.locator('#series-detail').isVisible(),false);await page.locator('#close-detail').click();
+ // A separate mobile context exercises configured Drive without real credentials.
+ const driveContext = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+ await driveContext.route('**/drive-config.js', route => route.fulfill({ contentType: 'text/javascript', body: "export const driveConfig = {clientId:'test',apiKey:'test',appId:'123'};" }));
+ await driveContext.addInitScript(() => {
+   window.authCalls = 0; window.pickerCalls = 0; window.driveMode = 'ok';
+   window.gapi = { load(_name, options) { options.callback(); } };
+   class Builder {
+     addView() { return this; } setOAuthToken() { return this; } setDeveloperKey() { return this; }
+     setAppId() { return this; } setOrigin() { return this; } setLocale() { return this; }
+     setCallback(callback) { this.callback = callback; return this; }
+     build() { window.pickerCalls++; return { setVisible: visible => { if (visible) setTimeout(() => this.callback(window.driveMode === 'cancel' ? { action: 'cancel' } : { action: 'picked', docs: [{ id: 'fiction-file', name: 'fiction.json' }] }), 0); }, dispose() {} }; }
+   }
+   window.google = { accounts: { oauth2: {
+     hasGrantedAllScopes: () => true,
+     initTokenClient(options) { return { requestAccessToken(request) {
+       window.authCalls++;
+       if (request.prompt !== 'consent select_account') throw Error('Missing consent');
+       if (window.driveMode === 'denied') options.callback({ error: 'access_denied' });
+       else options.callback({ access_token: 'temporary-test-token' });
+     } }; }
+   } }, picker: { PickerBuilder: Builder, Action: { PICKED: 'picked', CANCEL: 'cancel' }, DocsView: class {
+     setIncludeFolders() { return this; } setSelectFolderEnabled() { return this; }
+   } } };
+ });
+ let driveStatus = 200;
+ await driveContext.route('https://www.googleapis.com/drive/v3/files/**', route => {
+   assert.equal(route.request().headers().authorization, 'Bearer temporary-test-token');
+   return route.fulfill({ status: driveStatus, contentType: 'application/json', body: JSON.stringify([{title:'架空ドライブ蔵書'}]) });
+ });
+ const drivePage = await driveContext.newPage();
+ drivePage.on('pageerror', error => errors.push(error));
+ await drivePage.goto(root); await drivePage.locator('#settings').click();
+ await drivePage.locator('#drive-select').click();
+ await drivePage.waitForFunction(() => document.querySelector('#import-status').textContent.startsWith('1冊'));
+ assert.match(await drivePage.locator('#drive-source').textContent(), /fiction.json/);
+ await drivePage.reload(); await drivePage.locator('#settings').click();
+ drivePage.once('dialog', dialog => dialog.accept());
+ await drivePage.locator('#drive-update').click();
+ await drivePage.waitForFunction(() => document.querySelector('#import-status').textContent.startsWith('1冊'));
+ assert.equal(await drivePage.evaluate(() => pickerCalls), 0);
+ assert.equal(await drivePage.evaluate(() => authCalls), 1);
+ driveStatus = 404;
+ await drivePage.locator('#drive-update').click();
+ await drivePage.waitForFunction(() => document.querySelector('#import-status').textContent.includes('選び直して'));
+ assert.equal(await drivePage.evaluate(() => authCalls), 2);
+ assert.match(await drivePage.locator('#summary').textContent(), /登録済み: 1冊/);
+ await drivePage.evaluate(() => { driveMode = 'denied'; });
+ await drivePage.locator('#drive-update').click();
+ await drivePage.waitForFunction(() => document.querySelector('#import-status').textContent.includes('許可されません'));
+ await drivePage.evaluate(() => { driveMode = 'cancel'; });
+ await drivePage.locator('#drive-select').click();
+ await drivePage.waitForFunction(() => document.querySelector('#import-status').textContent.includes('キャンセル'));
+ assert.equal(await drivePage.locator('#management').evaluate(dialog => dialog.open), true);
+ await drivePage.locator('#drive-forget').click();
+ await drivePage.waitForFunction(() => document.querySelector('#drive-update').hidden);
+ assert.match(await drivePage.locator('#summary').textContent(), /登録済み: 1冊/);
+ assert.deepEqual(await drivePage.evaluate(() => [localStorage.length, sessionStorage.length]), [0, 0]);
+ await driveContext.close();
+ console.log('Drive Browser PASS: initial selection, persisted source, fresh consent, direct update, denied consent, cancellation, inaccessible file, forgetting source');
  assert.deepEqual(errors,[]);console.log('Series Browser PASS: import grouping, series totals, maximum volume, text-only volume selection, selected-cover requests, filtered details, offline metadata persistence, legacy records');console.log('Browser PASS: subpath, 10,000-book import, limited DOM, search, detail, invalid JSON protection, replacement cancel/accept, offline reload/search, deletion');
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

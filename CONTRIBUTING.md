@@ -115,3 +115,31 @@ ASIN・著者なしでも有効なタイトルがあれば取り込みます。A
 読み込み時は保存済みキーで表示項目を集約し、シリーズを再判定しません。キーのない旧レコードは単独表示を維持します。ルール変更を反映する場合は再インポートします。
 
 テストは架空データで巻数・表記ゆれ・再掲タイトル・続編の分離・旧レコード・検索絞り込みを確認します。ブラウザテストは、巻切り替え時の書影リクエストとオフラインでのシリーズ情報の保持も検証します。
+
+## Googleドライブ連携の設定
+
+Google Cloudの設定がない場合も、従来のファイル選択・オフライン取り込みを使用できます。直接連携を有効にするには `app/drive-config.js` に次の公開値を設定してください。クライアントシークレットは不要で、記載しないでください。
+
+- `clientId`: OAuth 2.0「ウェブアプリケーション」のクライアントID。
+- `apiKey`: Google Picker用のブラウザAPIキー。
+- `appId`: 同じGoogle Cloudプロジェクトのプロジェクト番号（文字列）。
+
+設定手順：
+
+1. Google Cloudでプロジェクトを作成し、Google Drive APIとGoogle Picker APIを有効にする。
+2. Google Auth Platformで同意画面を設定し、スコープ `https://www.googleapis.com/auth/drive.file` を追加する。テスト公開の場合は利用するGoogleアカウントをテストユーザーに追加する。
+3. OAuthクライアントの「承認済みのJavaScript生成元」に `https://ledsun.github.io` を登録する。ローカル確認用には `http://localhost:8000` も登録する。パスは含めない。
+4. APIキーはウェブサイトのHTTPリファラーで `https://ledsun.github.io/*` に制限し、API制限をGoogle Picker APIに限定する。ローカル確認が必要なら `http://localhost:8000/*` も追加する。
+5. 上記3値を設定してデプロイする。設定変更時もService WorkerのCACHEバージョンを更新する。
+
+更新のたびにGoogle Identity Servicesのトークン方式で `prompt: 'consent select_account'` を要求します。Googleのログイン状態はGoogle側で管理され、パスワードの再入力を保証するものではありません。リフレッシュトークンは取得しません。アクセストークンは操作中のメモリのみで使用し、アプリの永続ストレージ・URL・ログには保存しません。Google Pickerは選択終了後に破棄します。トークンの参照の破棄はGoogle側での失効とは異なり、有効期限まではトークン自体は有効です。
+
+保存する連携情報はファイルID・名前のみです。正常な取り込み時に蔵書と同じIndexedDBトランザクションで保存し、解析エラー・取得失敗・置換キャンセル時は以前の蔵書と連携情報を保持します。通常のファイル取り込み・全データ削除では連携情報も消去します。「前回のファイルを忘れる」は連携情報のみを消し、Google側のアクセス許可は取り消しません。Googleアカウントの「サードパーティ製のアプリとサービス」からアクセス許可を取り消せます。
+
+`drive.file` はPickerで選んだファイルにアクセス範囲を限定しますが、読み取り専用の権限ではありません。BookShelfは取得（GET）だけを実装しています。ファイルを別のGoogleアカウントで開いた場合や削除した場合は、エラーに従って選び直してください。同じDriveファイルの内容を更新する運用なら、保存したIDで再取得できます。ファイルを削除して作り直した場合はIDが変わります。
+
+Googleのスクリプトは、設定済みの状態でデータ管理を開いた際に読み込みます。Google認可、Picker、ファイル取得には通信が必要です。これらの外部通信やレスポンスをService Workerでキャッシュしません。
+
+参考：[トークン方式](https://developers.google.com/identity/oauth2/web/guides/use-token-model)、[Google Picker](https://developers.google.com/workspace/drive/picker/guides/overview)、[Driveのスコープ](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)。
+
+自動テストではGoogle SDKと通信をモックします。公開前に実際の設定とAndroid Chromeで、初回選択、再起動後の更新、認可拒否、ファイルのアクセス権喪失を確認してください。

@@ -19,7 +19,7 @@ export function readLibrary(db) {
     tx.onabort = () => reject(tx.error);
   });
 }
-export function replaceLibrary(db, books, importedAt = new Date().toISOString()) {
+export function replaceLibrary(db, books, importedAt = new Date().toISOString(), driveFile = null) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(['books', 'meta'], 'readwrite');
     tx.oncomplete = resolve;
@@ -31,6 +31,24 @@ export function replaceLibrary(db, books, importedAt = new Date().toISOString())
       const meta = tx.objectStore('meta');
       meta.clear();
       if (importedAt) meta.put(importedAt, 'importedAt');
+      if (driveFile) meta.put({ id: driveFile.id, name: driveFile.name }, 'driveFile');
     } catch (error) { tx.abort(); reject(error); }
+  });
+}
+
+export function readDriveSource(db) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('meta', 'readonly');
+    const request = tx.objectStore('meta').get('driveFile');
+    tx.oncomplete = () => resolve(request.result || null);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+export function forgetDriveSource(db) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('meta', 'readwrite');
+    tx.objectStore('meta').delete('driveFile');
+    tx.oncomplete = resolve;
+    tx.onabort = () => reject(tx.error);
   });
 }
