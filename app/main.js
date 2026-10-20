@@ -88,7 +88,7 @@ function showBook(book) {
   const url = amazonUrl(book.asin); $('amazon').hidden = !url;
   if (url) $('amazon').href = url; else $('amazon').removeAttribute('href');
 }
-function setBusy(value) { busy = value; $('file').disabled = value || !db; $('delete').disabled = value || !db; $('management').setAttribute('aria-busy', String(value)); $('import-shared').disabled = value || !db; $('discard-shared').disabled = value; }
+function setBusy(value) { busy = value; $('file').disabled = value || !db; $('delete').disabled = value || !db; $('management').setAttribute('aria-busy', String(value)); $('import-shared').disabled = value || !db; $('discard-shared').disabled = value; $('close-shared').disabled = value; $('shared-dialog').setAttribute('aria-busy', String(value)); }
 function openManagement() { summary(); $('management').showModal(); }
 $('settings').onclick = openManagement;
 $('start-import').onclick = openManagement;
@@ -115,46 +115,49 @@ for (const id of ['detail', 'review-prompt']) $(id).addEventListener('click', ev
 });
 $('more').onclick = renderMore;
 $('search').oninput = () => { clearTimeout(timer); timer = setTimeout(search, 120); };
-async function importFile(file) {
+async function importFile(file, status = $('import-status')) {
   if (!file || busy || !db) return;
-  setBusy(true); $('import-status').textContent = 'インポート中…ファイルを確認しています。';
+  setBusy(true); status.textContent = 'インポート中…ファイルを確認しています。';
   try {
     const result = parseLibrary(await file.text());
-    if (books.length && !confirm(`既存の${books.length}冊を${result.books.length}冊で全件置換しますか？`)) { $('import-status').textContent = 'インポートをキャンセルしました。'; return; }
+    if (books.length && !confirm(`既存の${books.length}冊を${result.books.length}冊で全件置換しますか？`)) { status.textContent = 'インポートをキャンセルしました。'; return; }
     const date = new Date().toISOString();
-    $('import-status').textContent = 'インポート中…端末に保存しています。';
+    status.textContent = 'インポート中…端末に保存しています。';
     await replaceLibrary(db, result.books, date);
     books = result.books; items = libraryItems(books); importedAt = date; search();
     clearSharedFile();
-    $('import-status').textContent = `${books.length.toLocaleString()}冊を取り込みました（入力${result.total}件、不正${result.skipped}件、重複${result.duplicates}件をスキップ）。`;
-  } catch (error) { $('import-status').textContent = `インポート失敗: ${error.message} 既存データは保持されています。`; }
+    status.textContent = `${books.length.toLocaleString()}冊を取り込みました（入力${result.total}件、不正${result.skipped}件、重複${result.duplicates}件をスキップ）。`;
+  } catch (error) { status.textContent = `インポート失敗: ${error.message} 既存データは保持されています。`; }
   finally { $('file').value = ''; setBusy(false); }
 }
 function clearSharedFile() {
-  sharedFile = null; $('shared-file').hidden = true; $('shared-name').textContent = '';
+  sharedFile = null; $('shared-actions').hidden = true; $('shared-name').textContent = '';
 }
 $('file').onchange = () => importFile($('file').files[0]);
 $('import-shared').onclick = () => {
-  if (sharedFile) importFile({ text: async () => sharedFile.text });
+  if (sharedFile) importFile({ text: async () => sharedFile.text }, $('shared-status'));
 };
 $('discard-shared').onclick = () => {
-  clearSharedFile(); $('import-status').textContent = '共有ファイルを破棄しました。蔵書は変更していません。';
+  if (!busy) $('shared-dialog').close();
 };
+$('close-shared').onclick = () => { if (!busy) $('shared-dialog').close(); };
+$('shared-dialog').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
+$('shared-dialog').addEventListener('close', clearSharedFile);
 async function receiveSharedFile() {
   const url = new URL(location.href);
   const id = url.searchParams.get('share'), error = url.searchParams.get('share-error');
   if (!id && !error) return;
   url.searchParams.delete('share'); url.searchParams.delete('share-error');
   history.replaceState(null, '', url);
-  openManagement(); setBusy(true);
+  $('shared-dialog').showModal(); setBusy(true);
   try {
     if (error) throw new Error(error === 'file' ? 'JSONファイルを1つ共有してください。リンクの共有には対応していません。' : '共有ファイルを端末に一時保存できませんでした。');
     sharedFile = await takeSharedFile(id);
     if (!sharedFile) throw new Error('共有ファイルが見つかりません。もう一度共有してください。');
     $('shared-name').textContent = sharedFile.name;
-    $('shared-file').hidden = false;
-    $('import-status').textContent = '共有ファイルを受け取りました。内容を取り込むにはボタンを押してください。';
-  } catch (error) { $('import-status').textContent = error.message; }
+    $('shared-actions').hidden = false;
+    $('shared-status').textContent = 'このファイルを蔵書に取り込みますか？';
+  } catch (error) { $('shared-status').textContent = error.message; }
   finally { setBusy(false); }
 }
 $('delete').onclick = async () => {
