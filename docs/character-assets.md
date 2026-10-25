@@ -10,7 +10,7 @@
 | `app/images/bookrow-welcome.png` | 蔵書未登録時 |
 | `app/images/bookrow-empty.png` | 検索結果なし |
 
-現在はすべての表示箇所で同じ立ち絵を使用しています。UIの文字はHTMLで表示します。
+同じ立ち絵を使用し、ヘッダーではCSSで顔を拡大して円形に切り出します。淡いベージュの背景を敷き、ダークモードでも表情を読み取りやすくしています。空状態とアプリアイコンは全身像です。UIの文字はHTMLで表示します。
 
 PWA用192px・512px・maskable 512px、Apple Touch Icon 180px、Favicon 32pxは次のコマンドで再生成できます。
 
